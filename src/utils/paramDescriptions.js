@@ -56,7 +56,7 @@ export const paramDescriptions = {
 	'checkpoint_timeout': '检查点超时时间。两次自动检查点之间的最大时间间隔。',
 	'default_statistics_target': '默认统计信息收集目标。控制ANALYZE收集的统计信息量，影响查询优化器的选择。',
 	'random_page_cost': '随机页面读取的成本估计。用于查询规划器估算随机I/O的成本，SSD通常设置为1.1，HDD为4.0。',
-	'effective_io_concurrency': '有效的并发I/O操作数。用于查询规划器估算并发I/O能力，SSD通常设置为200，HDD为2-4。',
+	'effective_io_concurrency': '有效的并发I/O操作数。用于查询规划器估算并发I/O能力。<span style="color: red; font-weight: bold;">默认值：1（虚拟机建议使用默认值1）。物理磁盘建议值：SSD 200，HDD 4。</span>',
 	'work_mem': '每个查询操作（排序、哈希、合并连接等）使用的内存大小。每个操作可以使用此值，多个操作会累加。',
 	'huge_pages': '是否使用大页内存。只能通过服务器启动时设置，需要重启服务',
 
@@ -157,7 +157,7 @@ export const paramDescriptionsEn = {
 	'checkpoint_timeout': 'Maximum time between automatic WAL checkpoints. Maximum time interval between automatic checkpoints.',
 	'default_statistics_target': 'Sets the default statistics target for table columns that have not had a statistics target set via ALTER TABLE SET STATISTICS. Controls the amount of statistics collected by ANALYZE, affects query optimizer choices.',
 	'random_page_cost': 'Sets the planner\'s estimate of the cost of a non-sequentially-fetched disk page. Used by query planner to estimate random I/O cost, typically set to 1.1 for SSD, 4.0 for HDD.',
-	'effective_io_concurrency': 'Sets the number of concurrent disk I/O operations that the system can execute. Used by query planner to estimate concurrent I/O capability, typically set to 200 for SSD, 2-4 for HDD.',
+	'effective_io_concurrency': 'Sets the number of concurrent disk I/O operations that the system can execute. Used by query planner to estimate concurrent I/O capability. <span style="color: red; font-weight: bold;">Default: 1 (recommended for virtual machines). Physical disk recommendations: SSD 200, HDD 4.</span>',
 	'work_mem': 'Specifies the amount of memory to be used by internal sort operations and hash tables before writing to temporary disk files. Each operation can use this value, multiple operations will accumulate.',
 	'huge_pages': 'Whether to use huge pages. Can only be set at server start, requires server restart.',
 

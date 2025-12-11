@@ -261,10 +261,14 @@ autovacuum_work_mem = GREATEST(DBInstanceClassMemory / 65536, 131072)
 **说明**: 用于查询规划器估算随机 I/O 的成本。SSD 的随机读取性能接近顺序读取，因此成本较低。
 
 #### 17. effective_io_concurrency（有效并发 I/O 操作数）
-- **SSD**: `200`
-- **HDD**: `4`
+- **默认值**: `1`（所有环境统一使用此默认值）
 
-**说明**: 用于查询规划器估算并发 I/O 能力。SSD 支持更高的并发 I/O。
+**说明**: 用于查询规划器估算并发 I/O 能力。
+
+**<span style="color: red; font-weight: bold;">建议值说明：</span>**
+- **<span style="color: red; font-weight: bold;">虚拟机环境：</span>** 使用默认值 `1`
+- **<span style="color: red; font-weight: bold;">物理磁盘 SSD：</span>** 建议设置为 `200`
+- **<span style="color: red; font-weight: bold;">物理磁盘 HDD：</span>** 建议设置为 `4`
 
 ### 其他固定参数
 

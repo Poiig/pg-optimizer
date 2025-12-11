@@ -170,12 +170,14 @@ export function calculateParams(config) {
 
 	// random_page_cost 和 effective_io_concurrency 根据存储类型
 	// 参考文章https://www.cnblogs.com/xibuhaohao/articles/19254482 
+	// effective_io_concurrency 默认值统一设置为 1
+	// 建议值：虚拟机使用默认值 1，物理磁盘 SSD 200，物理磁盘 HDD 4
 	if (storageType === 'ssd') {
 		addParam('random_page_cost', '1.1', performanceCategory)
-		addParam('effective_io_concurrency', '200', performanceCategory)
+		addParam('effective_io_concurrency', '1', performanceCategory)
 	} else {
 		addParam('random_page_cost', '4', performanceCategory)
-		addParam('effective_io_concurrency', '4', performanceCategory)
+		addParam('effective_io_concurrency', '1', performanceCategory)
 	}
 
 	// work_mem = GREATEST(DBInstanceClassMemory/4194304, 4096)

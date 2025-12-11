@@ -154,7 +154,7 @@
                       @mouseleave="hideTooltip"
                     >
                       <div class="tooltip-content">
-                        <div class="tooltip-text">{{ getParamDescription(param.name) }}</div>
+                        <div class="tooltip-text" v-html="getParamDescription(param.name)"></div>
                         <a 
                           :href="getParamDocUrl(param.name, config.dbVersion)"
                           target="_blank"
@@ -172,7 +172,7 @@
                     </span>
                   </td>
                   <td class="param-description">
-                    {{ getParamDescription(param.name, currentLang) || t('paramDescriptionDefault') }}
+                    <span v-html="getParamDescription(param.name, currentLang) || t('paramDescriptionDefault')"></span>
                   </td>
                 </tr>
               </template>
