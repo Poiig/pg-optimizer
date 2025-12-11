@@ -35,6 +35,29 @@
 - **Vite** (构建工具)
 - **原生 CSS** (样式)
 
+## 🚀 一键部署
+
+### Cloudflare Pages
+
+[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://dash.cloudflare.com/?to=/:account/pages/new)
+
+**使用 Cloudflare Pages 部署：**
+
+1. 点击上方的 "Deploy to Cloudflare Pages" 按钮
+2. 连接你的 GitHub 仓库
+3. 配置构建设置：
+   - **构建命令**: `npm run build`
+   - **构建输出目录**: `dist`
+   - **Node.js 版本**: `18` 或更高
+4. 点击 "保存并部署"
+
+或者使用 Wrangler CLI：
+
+```bash
+npm install -g wrangler
+wrangler pages deploy dist
+```
+
 ## 📦 安装和运行
 
 ### 安装依赖
@@ -260,6 +283,12 @@ MIT License
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
+
+## 🌐 在线演示
+
+项目已部署到 Cloudflare Pages，访问：[在线演示](https://your-project.pages.dev)
+
+> 注意：请将 `your-project.pages.dev` 替换为你的实际部署地址
 
 ## 📞 联系方式
 
