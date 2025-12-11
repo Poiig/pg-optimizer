@@ -86,6 +86,19 @@ docker run -d --name pg-optimizer -p 8080:80 pg-optimizer
 - 已包含 `try_files` 回退到 `index.html`，支持前端路由刷新不 404。
 - 如需自定义缓存/HTTPS，请替换 `docker/nginx.conf` 后重新构建。
 
+### 使用 Docker Compose 部署
+
+```bash
+# 前台启动（默认映射 8080 到容器 80）
+docker-compose up
+
+# 后台启动
+docker-compose up -d
+
+# 停止并清理
+docker-compose down
+```
+
 ## 📦 本地安装和运行
 
 ### 安装依赖

@@ -1,0 +1,10 @@
+services:
+  pg-optimizer:
+    build: .
+    image: pg-optimizer:latest
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
