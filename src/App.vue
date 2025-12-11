@@ -65,7 +65,7 @@
           <div class="action-buttons">
             <button @click="copyToClipboard" class="btn-secondary" id="copyBtn">复制配置</button>
             <button @click="copyAlterSystemSQL" class="btn-secondary" id="copySQLBtn">复制 ALTER SYSTEM SQL</button>
-            <button @click="downloadConfig" class="btn-secondary">下载配置文件</button>
+            <button @click="downloadConfig" class="btn-secondary" id="downloadBtn">下载配置文件</button>
           </div>
         </div>
         <div class="params-container">
@@ -204,6 +204,38 @@ export default {
       left: 0
     })
     let tooltipTimeout = null
+    
+    // 存储按钮的原始文本
+    const buttonOriginalTexts = {
+      copyBtn: '复制配置',
+      copySQLBtn: '复制 ALTER SYSTEM SQL',
+      downloadBtn: '下载配置文件'
+    }
+    
+    // 重置所有按钮到原始状态
+    const resetAllButtons = () => {
+      const buttons = [
+        document.getElementById('copyBtn'),
+        document.getElementById('copySQLBtn'),
+        document.getElementById('downloadBtn')
+      ]
+      
+      buttons.forEach(btn => {
+        if (btn) {
+          // 恢复原始文本
+          if (btn.id === 'copyBtn') {
+            btn.textContent = buttonOriginalTexts.copyBtn
+          } else if (btn.id === 'copySQLBtn') {
+            btn.textContent = buttonOriginalTexts.copySQLBtn
+          } else if (btn.id === 'downloadBtn') {
+            btn.textContent = buttonOriginalTexts.downloadBtn
+          }
+          // 恢复原始样式
+          btn.style.background = ''
+          btn.style.color = ''
+        }
+      })
+    }
 
     const generateConfig = () => {
       generatedParams.value = calculateParams(config)
@@ -278,26 +310,40 @@ export default {
         return
       }
       
+      // 先重置所有按钮
+      resetAllButtons()
+      
       const configText = generatedParams.value
         .map(param => `${param.name} = ${param.value}`)
         .join('\n')
       
+      const btn = event?.currentTarget || event?.target || document.getElementById('copyBtn')
+      
       navigator.clipboard.writeText(configText).then(() => {
         // 使用更友好的提示方式
-        if (event && event.target) {
-          const btn = event.target
-          const originalText = btn.textContent
+        if (btn) {
           btn.textContent = '已复制！'
           btn.style.background = '#28a745'
+          btn.style.color = 'white'
           setTimeout(() => {
-            btn.textContent = originalText
+            btn.textContent = buttonOriginalTexts.copyBtn
             btn.style.background = ''
+            btn.style.color = ''
           }, 2000)
         } else {
           alert('配置已复制到剪贴板！')
         }
       }).catch(err => {
         console.error('复制失败:', err)
+        if (btn) {
+          btn.style.background = '#dc3545'
+          btn.style.color = 'white'
+          setTimeout(() => {
+            btn.textContent = buttonOriginalTexts.copyBtn
+            btn.style.background = ''
+            btn.style.color = ''
+          }, 2000)
+        }
         alert('复制失败，请手动复制')
       })
     }
@@ -351,44 +397,89 @@ export default {
 
       const sqlText = sqlStatements.join('\n')
       
+      // 先重置所有按钮
+      resetAllButtons()
+      
+      const btn = event?.currentTarget || event?.target || document.getElementById('copySQLBtn')
+      
       navigator.clipboard.writeText(sqlText).then(() => {
-        if (event && event.target) {
-          const btn = event.target
-          const originalText = btn.textContent
+        if (btn) {
           btn.textContent = '已复制！'
           btn.style.background = '#28a745'
+          btn.style.color = 'white'
           setTimeout(() => {
-            btn.textContent = originalText
+            btn.textContent = buttonOriginalTexts.copySQLBtn
             btn.style.background = ''
+            btn.style.color = ''
           }, 2000)
         } else {
           alert('ALTER SYSTEM SQL 已复制到剪贴板！')
         }
       }).catch(err => {
         console.error('复制失败:', err)
+        if (btn) {
+          btn.style.background = '#dc3545'
+          btn.style.color = 'white'
+          setTimeout(() => {
+            btn.textContent = buttonOriginalTexts.copySQLBtn
+            btn.style.background = ''
+            btn.style.color = ''
+          }, 2000)
+        }
         alert('复制失败，请手动复制')
       })
     }
 
-    const downloadConfig = () => {
+    const downloadConfig = (event) => {
       if (!generatedParams.value || generatedParams.value.length === 0) {
         alert('没有可下载的配置参数，请先生成配置')
         return
       }
       
+      // 先重置所有按钮
+      resetAllButtons()
+      
       const configText = generatedParams.value
         .map(param => `${param.name} = ${param.value}`)
         .join('\n')
       
-      const blob = new Blob([configText], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `postgresql-${config.dbVersion}-optimized.conf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      try {
+        const blob = new Blob([configText], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `postgresql-${config.dbVersion}-optimized.conf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        
+        // 添加成功提示
+        const btn = event?.currentTarget || event?.target || document.getElementById('downloadBtn')
+        if (btn) {
+          btn.textContent = '已下载！'
+          btn.style.background = '#28a745'
+          btn.style.color = 'white'
+          setTimeout(() => {
+            btn.textContent = buttonOriginalTexts.downloadBtn
+            btn.style.background = ''
+            btn.style.color = ''
+          }, 2000)
+        }
+      } catch (err) {
+        console.error('下载失败:', err)
+        const btn = event?.currentTarget || event?.target || document.getElementById('downloadBtn')
+        if (btn) {
+          btn.style.background = '#dc3545'
+          btn.style.color = 'white'
+          setTimeout(() => {
+            btn.textContent = buttonOriginalTexts.downloadBtn
+            btn.style.background = ''
+            btn.style.color = ''
+          }, 2000)
+        }
+        alert('下载失败，请重试')
+      }
     }
 
     // 初始化时生成一次配置
@@ -556,11 +647,20 @@ export default {
   border-radius: 6px;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-secondary:hover {
   background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .params-container {
