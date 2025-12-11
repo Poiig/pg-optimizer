@@ -37,27 +37,39 @@
 
 ## 🚀 一键部署
 
-### Cloudflare
-
-> **注意**: Cloudflare 现已统一 Pages 和 Workers 平台，可以通过统一的界面部署静态网站和边缘应用。
+### 使用 Cloudflare Pages 部署
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages)
 
-**使用 Cloudflare 部署：**
+#### 环境要求
+- Node.js 18+
+- npm（或 pnpm/yarn，对应修改命令）
 
 #### 1. Fork 本仓库
-
 将此项目 Fork 到你自己的 GitHub 账户下。
 
 #### 2. 创建 Cloudflare Pages 项目
-
 * 登录 Cloudflare 控制台，进入 `Workers & Pages`。
 * 选择“创建应用程式” -> “Pages” -> “连结到 Git”。
 * 选择你刚刚 Fork 的仓库。
-* 在 **“设定组建和部署”** 页面，构建设定如下:
+* 在 **“设定组建和部署”** 页面，构建设定如下：
   * **框架预设**: `None`
   * **构建命令**: `npm run build`
-  * **构建输出目录**: `/`
+  * **构建输出目录**: `dist`  ← 重要，Vite 默认输出目录
+  * **环境变量**: 默认无需配置（如需自定义 API，可在此添加）
+
+#### 3. 确认生产分支
+默认使用 `main`；如有自定义分支，请在 Pages “来源”里切换。
+
+#### 4. 部署
+保存后将自动构建并部署，稍等几分钟即可访问。
+
+#### Pages 配置检查清单
+- ✅ 构建命令为 `npm run build`
+- ✅ 构建输出目录为 `dist`
+- ✅ 生产分支选择正确（默认 `main`）
+- ✅ 无需 Workers 绑定或 KV/R2 依赖
+- ✅ 需要自定义域名时，记得在 Pages 完成域名绑定和 DNS 生效
 
 ![Cloudflare Pages](screenshots/DeployCloudflare.png)
 
