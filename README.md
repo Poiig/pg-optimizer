@@ -55,7 +55,7 @@
    - **Node.js 版本**: `20` (项目包含 `.nvmrc` 文件，Wrangler 要求 v20.0.0+)
    - **环境变量**: 无需设置
    - **⚠️ 重要**: 如果"部署命令"是必填项，请使用：`npm run pages:deploy`
-     - 这会执行 `wrangler pages deploy dist`，这是 Pages 项目的正确部署命令
+     - 这会执行 `npx wrangler pages deploy dist`，这是 Pages 项目的正确部署命令
      - **不要使用** `npx wrangler deploy`，这是 Workers 的命令
      - 如果自动生成了 `npx wrangler deploy`，请替换为 `npm run pages:deploy`
 4. 点击 "保存并部署"
