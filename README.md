@@ -41,66 +41,27 @@
 
 > **注意**: Cloudflare 现已统一 Pages 和 Workers 平台，可以通过统一的界面部署静态网站和边缘应用。
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://dash.cloudflare.com/?to=/:account/pages/new)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages)
 
 **使用 Cloudflare 部署：**
 
-1. 点击上方的 "Deploy to Cloudflare" 按钮
-2. 连接你的 GitHub 仓库
-3. 配置构建设置：
-   - **框架预设**: `Vite` (或选择 `None` 手动配置)
-   - **构建命令**: `npm run build`
-   - **构建输出目录**: `dist`
-   - **根目录**: `/` (留空)
-   - **Node.js 版本**: `20` (项目包含 `.nvmrc` 文件，Wrangler 要求 v20.0.0+)
-   - **环境变量**: 无需设置
-   - **⚠️ 重要**: 如果"部署命令"是必填项，请使用：`npm run pages:deploy`
-     - 这会执行 `npx wrangler pages deploy dist`，这是 Pages 项目的正确部署命令
-     - **不要使用** `npx wrangler deploy`，这是 Workers 的命令
-     - 如果自动生成了 `npx wrangler deploy`，请替换为 `npm run pages:deploy`
-4. 点击 "保存并部署"
+#### 1. Fork 本仓库
 
-**如果构建失败，请检查：**
-- ✅ 确保 Node.js 版本为 20 或更高（项目包含 `.nvmrc` 文件指定版本，Wrangler 要求 v20.0.0+）
-- ✅ 检查构建日志中的完整错误信息
-- ✅ 确保所有依赖都已正确安装
-- ✅ 尝试在本地运行 `npm run build` 验证构建是否正常
-- ✅ 如果构建超时，可以尝试增加构建超时时间（在 Cloudflare 设置中）
-- ✅ 确保 `public/_redirects` 文件存在（用于 SPA 路由）
-- ✅ **重要**: 如果使用 Wrangler CLI，确保使用 `wrangler pages deploy` 而不是 `wrangler deploy`
+将此项目 Fork 到你自己的 GitHub 账户下。
 
-**使用 Wrangler CLI 部署：**
+#### 2. 创建 Cloudflare Pages 项目
 
-```bash
-# 安装 Wrangler
-npm install -g wrangler
+* 登录 Cloudflare 控制台，进入 `Workers & Pages`。
+* 选择“创建应用程式” -> “Pages” -> “连结到 Git”。
+* 选择你刚刚 Fork 的仓库。
+* 在 **“设定组建和部署”** 页面，构建设定如下:
+  * **框架预设**: `None`
+  * **构建命令**: `npm run build`
+  * **构建输出目录**: `/`
 
-# 登录 Cloudflare
-wrangler login
+![Cloudflare Pages](screenshots/DeployCloudflare.png)
 
-# 构建项目
-npm run build
-
-# 部署到 Cloudflare（构建后）
-npm run pages:deploy
-
-# 或者构建并部署（完整流程）
-npm run deploy
-```
-
-**当前部署配置：**
-- ✅ `vite.config.js` - Vite 构建配置，输出到 `dist` 目录
-- ✅ `public/_redirects` - SPA 路由重定向配置
-- ✅ `.nvmrc` - Node.js 版本指定（20，Wrangler 要求 v20.0.0+）
-- ✅ `wrangler.toml` - Wrangler 配置文件（仅包含项目名称，用于 Pages 部署）
-- ✅ `.wranglerignore` - 排除不需要部署的文件
-
-**重要提示：**
-- `wrangler.toml` 文件仅包含项目名称，不会影响 Cloudflare 的项目类型识别
-- 如果通过 Cloudflare 控制台部署，确保使用 `npm run pages:deploy` 作为部署命令
-- 如果遇到 "Workers-specific command" 错误，请确保使用 `npm run pages:deploy` 而不是 `npx wrangler deploy`
-
-## 📦 安装和运行
+## 📦 本地安装和运行
 
 ### 安装依赖
 

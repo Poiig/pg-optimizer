@@ -1,6 +1,0 @@
-# Cloudflare Pages 部署配置文件
-# 仅用于指定项目名称，不会影响 Cloudflare 的项目类型识别
-
-name = "pg-optimizer"
-pages_build_output_dir = "dist"
-
