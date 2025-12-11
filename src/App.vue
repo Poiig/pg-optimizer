@@ -9,48 +9,50 @@
       <div class="input-section">
         <h2>服务器配置</h2>
         <form @submit.prevent="generateConfig" class="config-form">
-          <div class="form-group">
-            <label for="dbVersion">PostgreSQL 版本</label>
-            <select id="dbVersion" v-model="config.dbVersion" required>
-              <option value="13">PostgreSQL 13</option>
-              <!-- <option value="14">PostgreSQL 14</option>
-              <option value="15">PostgreSQL 15</option>
-              <option value="16">PostgreSQL 16</option> -->
-            </select>
-          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="dbVersion">PostgreSQL 版本</label>
+              <select id="dbVersion" v-model="config.dbVersion" required>
+                <option value="13">PostgreSQL 13</option>
+                <!-- <option value="14">PostgreSQL 14</option>
+                <option value="15">PostgreSQL 15</option>
+                <option value="16">PostgreSQL 16</option> -->
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label for="cpuCores">CPU 核心数</label>
-            <input
-              id="cpuCores"
-              type="number"
-              v-model.number="config.cpuCores"
-              min="1"
-              max="256"
-              required
-              placeholder="例如: 8"
-            />
-          </div>
+            <div class="form-group">
+              <label for="cpuCores">CPU 核心数</label>
+              <input
+                id="cpuCores"
+                type="number"
+                v-model.number="config.cpuCores"
+                min="1"
+                max="256"
+                required
+                placeholder="例如: 8"
+              />
+            </div>
 
-          <div class="form-group">
-            <label for="memoryGB">内存 (GB)</label>
-            <input
-              id="memoryGB"
-              type="number"
-              v-model.number="config.memoryGB"
-              min="1"
-              max="1024"
-              required
-              placeholder="例如: 32"
-            />
-          </div>
+            <div class="form-group">
+              <label for="memoryGB">内存 (GB)</label>
+              <input
+                id="memoryGB"
+                type="number"
+                v-model.number="config.memoryGB"
+                min="1"
+                max="1024"
+                required
+                placeholder="例如: 32"
+              />
+            </div>
 
-          <div class="form-group">
-            <label for="storageType">存储类型</label>
-            <select id="storageType" v-model="config.storageType" required>
-              <option value="ssd">SSD</option>
-              <option value="hdd">机械硬盘 (HDD)</option>
-            </select>
+            <div class="form-group">
+              <label for="storageType">存储类型</label>
+              <select id="storageType" v-model="config.storageType" required>
+                <option value="ssd">SSD</option>
+                <option value="hdd">机械硬盘 (HDD)</option>
+              </select>
+            </div>
           </div>
 
           <button type="submit" class="generate-btn">生成配置</button>
@@ -72,12 +74,14 @@
               <tr>
                 <th>参数名</th>
                 <th>参数值</th>
+                <th>是否需要重启</th>
+                <th>描述</th>
               </tr>
             </thead>
             <tbody>
               <template v-for="(group, category) in groupedParams" :key="category">
                 <tr class="category-header">
-                  <td colspan="2" class="category-title">{{ category }}</td>
+                  <td colspan="4" class="category-title">{{ category }}</td>
                 </tr>
                 <tr v-for="(param, index) in group" :key="`${category}-${index}`">
                   <td class="param-name">
@@ -133,6 +137,14 @@
                       </div>
                     </div>
                   </td>
+                  <td class="param-restart">
+                    <span :class="['restart-badge', isRestartRequired(param.name) ? 'restart-yes' : 'restart-no']">
+                      {{ getRestartRequiredText(param.name) }}
+                    </span>
+                  </td>
+                  <td class="param-description">
+                    {{ getParamDescription(param.name) }}
+                  </td>
                 </tr>
               </template>
             </tbody>
@@ -147,6 +159,7 @@
 import { ref, reactive, computed } from 'vue'
 import { calculateParams } from './utils/paramCalculator'
 import { getParamDescription, getParamDocUrl } from './utils/paramDescriptions'
+import { isRestartRequired, getRestartRequiredText } from './utils/paramRestartInfo'
 
 export default {
   name: 'App',
@@ -379,6 +392,8 @@ export default {
       downloadConfig,
       getParamDescription,
       getParamDocUrl,
+      isRestartRequired,
+      getRestartRequiredText,
       showTooltip,
       keepTooltipVisible,
       hideTooltip
@@ -414,8 +429,8 @@ export default {
 }
 
 .main-content {
-  display: grid;
-  grid-template-columns: 400px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 30px;
   padding: 30px;
 }
@@ -424,9 +439,6 @@ export default {
   background: #f8f9fa;
   padding: 30px;
   border-radius: 12px;
-  height: fit-content;
-  position: sticky;
-  top: 20px;
 }
 
 .input-section h2 {
@@ -438,6 +450,12 @@ export default {
 .config-form {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
 }
 
@@ -555,6 +573,24 @@ export default {
   font-weight: 600;
   color: #333;
   border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+}
+
+.params-table th:nth-child(1) {
+  width: 25%;
+}
+
+.params-table th:nth-child(2) {
+  width: 20%;
+}
+
+.params-table th:nth-child(3) {
+  width: 12%;
+  text-align: center;
+}
+
+.params-table th:nth-child(4) {
+  width: 43%;
 }
 
 .params-table td {
@@ -567,16 +603,49 @@ export default {
 }
 
 .category-header {
-  background: #e9ecef;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .category-title {
   font-weight: 700;
-  font-size: 1rem;
-  color: #495057;
+  font-size: 1.1rem;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.param-restart {
   padding: 12px 15px;
   text-align: center;
-  border-bottom: 2px solid #dee2e6;
+  vertical-align: middle;
+}
+
+.restart-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.restart-yes {
+  background: #ff6b6b;
+  color: white;
+}
+
+.restart-no {
+  background: #51cf66;
+  color: white;
+}
+
+.param-description {
+  padding: 12px 15px;
+  color: #6c757d;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 300px;
 }
 
 .param-name {
@@ -584,7 +653,8 @@ export default {
   color: #495057;
   font-family: 'Courier New', monospace;
   font-size: 0.9rem;
-  width: 40%;
+  width: 25%;
+  min-width: 200px;
 }
 
 .param-name-wrapper {
@@ -716,13 +786,9 @@ export default {
   text-decoration: underline;
 }
 
-@media (max-width: 1024px) {
-  .main-content {
+@media (max-width: 768px) {
+  .form-row {
     grid-template-columns: 1fr;
-  }
-
-  .input-section {
-    position: static;
   }
 }
 </style>
