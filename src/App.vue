@@ -1,17 +1,47 @@
 <template>
   <div class="app-container">
     <header class="header">
-      <h1>PostgreSQL 性能参数优化工具</h1>
-      <p class="subtitle">根据您的服务器配置自动生成优化的 PostgreSQL 参数</p>
+      <div class="header-content">
+        <div>
+          <h1>{{ t('title') }}</h1>
+          <p class="subtitle">{{ t('subtitle') }}</p>
+        </div>
+        <div class="language-switcher">
+          <div class="lang-dropdown" :class="{ open: langDropdownOpen }">
+            <button class="lang-dropdown-btn" type="button" @click="toggleLangDropdown">
+              <span>{{ currentLang === 'zh' ? '简体中文' : 'English' }}</span>
+              <svg class="lang-dropdown-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 4.5L6 7.5L9 4.5"/>
+              </svg>
+            </button>
+            <div v-if="langDropdownOpen" class="lang-dropdown-menu" @click.stop>
+              <div 
+                class="lang-dropdown-item" 
+                :class="{ active: currentLang === 'zh' }"
+                @click="selectLanguage('zh')"
+              >
+                简体中文
+              </div>
+              <div 
+                class="lang-dropdown-item" 
+                :class="{ active: currentLang === 'en' }"
+                @click="selectLanguage('en')"
+              >
+                English
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </header>
 
     <div class="main-content">
       <div class="input-section">
-        <h2>服务器配置</h2>
+        <h2>{{ t('serverConfig') }}</h2>
         <form @submit.prevent="generateConfig" class="config-form">
           <div class="form-row">
             <div class="form-group">
-              <label for="dbVersion">PostgreSQL 版本</label>
+              <label for="dbVersion">{{ t('dbVersion') }}</label>
               <select id="dbVersion" v-model="config.dbVersion" required>
                 <option value="13">PostgreSQL 13</option>
                 <!-- <option value="14">PostgreSQL 14</option>
@@ -21,7 +51,7 @@
             </div>
 
             <div class="form-group">
-              <label for="cpuCores">CPU 核心数</label>
+              <label for="cpuCores">{{ t('cpuCores') }}</label>
               <input
                 id="cpuCores"
                 type="number"
@@ -29,12 +59,12 @@
                 min="1"
                 max="256"
                 required
-                placeholder="例如: 8"
+                :placeholder="t('placeholderCpu')"
               />
             </div>
 
             <div class="form-group">
-              <label for="memoryGB">内存 (GB)</label>
+              <label for="memoryGB">{{ t('memoryGB') }}</label>
               <input
                 id="memoryGB"
                 type="number"
@@ -42,45 +72,45 @@
                 min="1"
                 max="1024"
                 required
-                placeholder="例如: 32"
+                :placeholder="t('placeholderMemory')"
               />
             </div>
 
             <div class="form-group">
-              <label for="storageType">存储类型</label>
+              <label for="storageType">{{ t('storageType') }}</label>
               <select id="storageType" v-model="config.storageType" required>
-                <option value="ssd">SSD</option>
-                <option value="hdd">机械硬盘 (HDD)</option>
+                <option value="ssd">{{ t('ssd') }}</option>
+                <option value="hdd">{{ t('hdd') }}</option>
               </select>
             </div>
           </div>
 
-          <button type="submit" class="generate-btn">生成配置</button>
+          <button type="submit" class="generate-btn">{{ t('generateConfig') }}</button>
         </form>
       </div>
 
       <div class="result-section" v-if="generatedParams.length > 0">
         <div class="result-header">
-          <h2>生成的配置参数</h2>
+          <h2>{{ t('generatedParams') }}</h2>
           <div class="action-buttons">
-            <button @click="copyToClipboard" class="btn-secondary" id="copyBtn">复制配置</button>
-            <button @click="showAlterSystemSQL" class="btn-secondary" id="copySQLBtn">生成并预览 ALTER SYSTEM SQL</button>
+            <button @click="copyToClipboard" class="btn-secondary" id="copyBtn">{{ t('copyConfig') }}</button>
+            <button @click="showAlterSystemSQL" class="btn-secondary" id="copySQLBtn">{{ t('previewSQL') }}</button>
           </div>
         </div>
         <div class="params-container">
           <table class="params-table">
             <thead>
               <tr>
-                <th>参数名</th>
-                <th>参数值</th>
-                <th>是否需要重启</th>
-                <th>描述</th>
+                <th>{{ t('paramName') }}</th>
+                <th>{{ t('paramValue') }}</th>
+                <th>{{ t('restartRequired') }}</th>
+                <th>{{ t('description') }}</th>
               </tr>
             </thead>
             <tbody>
               <template v-for="(group, category) in groupedParams" :key="category">
                 <tr class="category-header">
-                  <td colspan="4" class="category-title">{{ category }}</td>
+                  <td colspan="4" class="category-title">{{ getCategoryName(category, currentLang) }}</td>
                 </tr>
                 <tr v-for="(param, index) in group" :key="`${category}-${index}`">
                   <td class="param-name">
@@ -90,7 +120,7 @@
                         :href="getParamDocUrl(param.name, config.dbVersion)"
                         target="_blank"
                         class="param-doc-link"
-                        :title="`查看 ${param.name} 的官方文档`"
+                        :title="`${t('viewDoc')}: ${param.name}`"
                         @click.stop
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -131,18 +161,18 @@
                           class="tooltip-link"
                           @click.stop
                         >
-                          查看官方文档 →
+                          {{ t('viewDocLink') }}
                         </a>
                       </div>
                     </div>
                   </td>
                   <td class="param-restart">
                     <span :class="['restart-badge', isRestartRequired(param.name) ? 'restart-yes' : 'restart-no']">
-                      {{ getRestartRequiredText(param.name) }}
+                      {{ getRestartRequiredText(param.name, currentLang) }}
                     </span>
                   </td>
                   <td class="param-description">
-                    {{ getParamDescription(param.name) || '该参数的详细说明请参考 PostgreSQL 官方文档' }}
+                    {{ getParamDescription(param.name, currentLang) || t('paramDescriptionDefault') }}
                   </td>
                 </tr>
               </template>
@@ -156,12 +186,12 @@
     <div v-if="sqlModal.visible" class="modal-overlay" @click="closeSQLModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>ALTER SYSTEM SQL 语句</h3>
+          <h3>{{ t('alterSystemSQL') }}</h3>
           <button class="modal-close" @click="closeSQLModal">&times;</button>
         </div>
         <div class="modal-body">
           <div class="sql-actions">
-            <button @click="copySQLFromModal" class="btn-copy-sql">复制 SQL</button>
+            <button @click="copySQLFromModal" class="btn-copy-sql">{{ t('copySQL') }}</button>
           </div>
           <pre class="sql-preview">{{ sqlModal.sqlText }}</pre>
         </div>
@@ -171,14 +201,50 @@
 </template>
 
 <script>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { calculateParams } from './utils/paramCalculator'
 import { getParamDescription, getParamDocUrl } from './utils/paramDescriptions'
 import { isRestartRequired, getRestartRequiredText } from './utils/paramRestartInfo'
+import { t, translations, getCategoryName } from './utils/i18n'
 
 export default {
   name: 'App',
   setup() {
+    // 语言设置，默认中文
+    const currentLang = ref('zh')
+    
+    // 翻译函数
+    const t = (key) => {
+      return translations[currentLang.value]?.[key] || key
+    }
+    
+    // 下拉菜单状态
+    const langDropdownOpen = ref(false)
+    
+    // 切换语言
+    const switchLanguage = (lang) => {
+      currentLang.value = lang
+      langDropdownOpen.value = false
+    }
+    
+    // 选择语言（带关闭下拉菜单）
+    const selectLanguage = (lang) => {
+      switchLanguage(lang)
+    }
+    
+    // 切换下拉菜单显示状态
+    const toggleLangDropdown = () => {
+      langDropdownOpen.value = !langDropdownOpen.value
+    }
+    
+    // 关闭下拉菜单
+    const closeLangDropdown = () => {
+      // 延迟关闭，确保点击事件能触发
+      setTimeout(() => {
+        langDropdownOpen.value = false
+      }, 200)
+    }
+    
     const config = reactive({
       dbVersion: '13',
       cpuCores: 8,
@@ -212,6 +278,7 @@ export default {
       })
       return orderedGroups
     })
+    
     const tooltip = reactive({
       visible: false,
       paramName: '',
@@ -226,11 +293,11 @@ export default {
       sqlText: ''
     })
     
-    // 存储按钮的原始文本
-    const buttonOriginalTexts = {
-      copyBtn: '复制配置',
-      copySQLBtn: '生成并预览 ALTER SYSTEM SQL'
-    }
+    // 存储按钮的原始文本（需要根据语言更新）
+    const buttonOriginalTexts = computed(() => ({
+      copyBtn: t('copyConfig'),
+      copySQLBtn: t('previewSQL')
+    }))
     
     // 重置所有按钮到原始状态
     const resetAllButtons = () => {
@@ -243,9 +310,9 @@ export default {
         if (btn) {
           // 恢复原始文本
           if (btn.id === 'copyBtn') {
-            btn.textContent = buttonOriginalTexts.copyBtn
+            btn.textContent = buttonOriginalTexts.value.copyBtn
           } else if (btn.id === 'copySQLBtn') {
-            btn.textContent = buttonOriginalTexts.copySQLBtn
+            btn.textContent = buttonOriginalTexts.value.copySQLBtn
           }
           // 恢复原始样式
           btn.style.background = ''
@@ -323,7 +390,7 @@ export default {
 
     const copyToClipboard = (event) => {
       if (!generatedParams.value || generatedParams.value.length === 0) {
-        alert('没有可复制的配置参数，请先生成配置')
+        alert(t('noParams'))
         return
       }
       
@@ -339,16 +406,16 @@ export default {
       navigator.clipboard.writeText(configText).then(() => {
         // 使用更友好的提示方式
         if (btn) {
-          btn.textContent = '已复制！'
+          btn.textContent = t('copied')
           btn.style.background = '#28a745'
           btn.style.color = 'white'
           setTimeout(() => {
-            btn.textContent = buttonOriginalTexts.copyBtn
+            btn.textContent = buttonOriginalTexts.value.copyBtn
             btn.style.background = ''
             btn.style.color = ''
           }, 2000)
         } else {
-          alert('配置已复制到剪贴板！')
+          alert(t('copied'))
         }
       }).catch(err => {
         console.error('复制失败:', err)
@@ -356,12 +423,12 @@ export default {
           btn.style.background = '#dc3545'
           btn.style.color = 'white'
           setTimeout(() => {
-            btn.textContent = buttonOriginalTexts.copyBtn
+            btn.textContent = buttonOriginalTexts.value.copyBtn
             btn.style.background = ''
             btn.style.color = ''
           }, 2000)
         }
-        alert('复制失败，请手动复制')
+        alert(t('copyFailed'))
       })
     }
 
@@ -388,24 +455,18 @@ export default {
         return `'${str.replace(/'/g, "''")}'`
       }
 
-      // 按分组组织参数
-      const groupedParams = {}
-      generatedParams.value.forEach(param => {
-        const category = param.category || '其他参数'
-        if (!groupedParams[category]) {
-          groupedParams[category] = []
-        }
-        groupedParams[category].push(param)
-      })
+      // 使用已有的 groupedParams computed 属性
+      const groups = groupedParams.value
 
       // 生成带注释分组的 SQL
       const sqlStatements = []
       const categoryOrder = ['性能相关参数', '自动清理相关配置', '超时相关', '日志记录相关', '其他参数']
       
       categoryOrder.forEach(category => {
-        if (groupedParams[category] && groupedParams[category].length > 0) {
-          sqlStatements.push(`-- ======================${category}=====================`)
-          groupedParams[category].forEach(param => {
+        if (groups[category] && groups[category].length > 0) {
+          const displayCategory = getCategoryName(category, currentLang.value)
+          sqlStatements.push(`-- ======================${displayCategory}=====================`)
+          groups[category].forEach(param => {
             sqlStatements.push(`ALTER SYSTEM SET ${param.name} = ${escapeValue(param.value)};`)
           })
           sqlStatements.push('') // 空行分隔
@@ -418,7 +479,7 @@ export default {
     // 显示 ALTER SYSTEM SQL 弹窗
     const showAlterSystemSQL = () => {
       if (!generatedParams.value || generatedParams.value.length === 0) {
-        alert('没有可生成的配置参数，请先生成配置')
+        alert(t('noParams'))
         return
       }
       
@@ -443,7 +504,7 @@ export default {
         const btn = document.querySelector('.btn-copy-sql')
         if (btn) {
           const originalText = btn.textContent
-          btn.textContent = '已复制！'
+          btn.textContent = t('copied')
           btn.style.background = '#28a745'
           btn.style.color = 'white'
           setTimeout(() => {
@@ -452,13 +513,42 @@ export default {
             btn.style.color = ''
           }, 2000)
         } else {
-          alert('ALTER SYSTEM SQL 已复制到剪贴板！')
+          alert(t('sqlCopied'))
         }
       }).catch(err => {
         console.error('复制失败:', err)
-        alert('复制失败，请手动复制')
+        alert(t('copyFailed'))
       })
     }
+
+    // 监听语言变化，更新按钮文本
+    watch(currentLang, () => {
+      const copyBtn = document.getElementById('copyBtn')
+      const copySQLBtn = document.getElementById('copySQLBtn')
+      if (copyBtn && !copyBtn.textContent.includes('已复制') && !copyBtn.textContent.includes('Copied')) {
+        copyBtn.textContent = buttonOriginalTexts.value.copyBtn
+      }
+      if (copySQLBtn && !copySQLBtn.textContent.includes('已复制') && !copySQLBtn.textContent.includes('Copied')) {
+        copySQLBtn.textContent = buttonOriginalTexts.value.copySQLBtn
+      }
+    })
+    
+    // 点击外部关闭下拉菜单
+    const handleClickOutside = (event) => {
+      const dropdown = event.target.closest('.lang-dropdown')
+      if (!dropdown && langDropdownOpen.value) {
+        langDropdownOpen.value = false
+      }
+    }
+    
+    // 在组件挂载时添加事件监听
+    onMounted(() => {
+      document.addEventListener('click', handleClickOutside)
+    })
+    
+    onUnmounted(() => {
+      document.removeEventListener('click', handleClickOutside)
+    })
 
     // 初始化时生成一次配置
     generateConfig()
@@ -471,6 +561,14 @@ export default {
       generateConfig,
       updateParam,
       updateParamByCategory,
+      currentLang,
+      langDropdownOpen,
+      switchLanguage,
+      selectLanguage,
+      toggleLangDropdown,
+      closeLangDropdown,
+      t,
+      getCategoryName,
       copyToClipboard,
       showAlterSystemSQL,
       closeSQLModal,
@@ -500,6 +598,18 @@ export default {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 40px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-content > div:first-child {
+  flex: 1;
   text-align: center;
 }
 
@@ -512,6 +622,78 @@ export default {
 .subtitle {
   font-size: 1.1rem;
   opacity: 0.9;
+}
+
+.language-switcher {
+  position: relative;
+}
+
+.lang-dropdown {
+  position: relative;
+}
+
+.lang-dropdown-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 8px 32px 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  position: relative;
+}
+
+.lang-dropdown-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.lang-dropdown-icon {
+  position: absolute;
+  right: 10px;
+  transition: transform 0.2s ease;
+}
+
+.lang-dropdown.open .lang-dropdown-icon {
+  transform: rotate(180deg);
+}
+
+.lang-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.lang-dropdown-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #333;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.lang-dropdown-item:hover {
+  background-color: #f0f0f0;
+}
+
+.lang-dropdown-item.active {
+  background-color: #e3f2fd;
+  color: #667eea;
+  font-weight: 500;
 }
 
 .main-content {

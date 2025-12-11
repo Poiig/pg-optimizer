@@ -39,9 +39,13 @@ export function isRestartRequired(paramName) {
 /**
  * 获取参数是否需要重启的文本
  * @param {string} paramName - 参数名
- * @returns {string} "是" 或 "否"
+ * @param {string} lang - 语言代码 ('zh' 或 'en')
+ * @returns {string} "是"/"否" 或 "Yes"/"No"
  */
-export function getRestartRequiredText(paramName) {
+export function getRestartRequiredText(paramName, lang = 'zh') {
+	if (lang === 'en') {
+		return isRestartRequired(paramName) ? 'Yes' : 'No'
+	}
 	return isRestartRequired(paramName) ? '是' : '否'
 }
 

@@ -103,6 +103,107 @@ export const paramDescriptions = {
 	'log_statement_sample_rate': '语句采样率。控制被采样记录的语句比例（0.0-1.0）。'
 }
 
+// English descriptions based on PostgreSQL official documentation
+export const paramDescriptionsEn = {
+	// Autovacuum related parameters
+	'autovacuum': 'Enables the autovacuum daemon process, which automatically vacuums and updates table statistics.',
+	'autovacuum_analyze_scale_factor': 'Number of tuple inserts, updates, or deletes prior to analyze as a fraction of reltuples.',
+	'autovacuum_analyze_threshold': 'Minimum number of inserted, updated, or deleted tuples before analyze.',
+	'autovacuum_naptime': 'Minimum delay between autovacuum runs on any given database. Controls how frequently autovacuum checks tables.',
+	'autovacuum_vacuum_cost_delay': 'Vacuum cost delay for autovacuum, in milliseconds. When the cost limit has been reached, the autovacuum process will sleep for this amount of time.',
+	'autovacuum_vacuum_cost_limit': 'Vacuum cost amount available for autovacuum operations. Controls the impact of autovacuum on the system.',
+	'autovacuum_vacuum_scale_factor': 'Number of tuple updates or deletes prior to vacuum as a fraction of reltuples.',
+	'autovacuum_vacuum_threshold': 'Minimum number of updated or deleted tuples before vacuum.',
+	'log_autovacuum_min_duration': 'Causes each action executed by autovacuum to be logged if the action ran for at least the specified number of milliseconds.',
+	'autovacuum_freeze_max_age': 'Age at which to autovacuum a table to prevent transaction ID wraparound. When a table\'s transaction ID age exceeds this value, autovacuum will trigger freezing.',
+	'autovacuum_multixact_freeze_max_age': 'Multixact age at which to autovacuum a table to prevent multixact wraparound.',
+	'autovacuum_max_workers': 'Maximum number of autovacuum processes (other than the autovacuum launcher) that may be running at any one time. Can only be set at server start, requires server restart.',
+	'autovacuum_work_mem': 'Maximum amount of memory to be used by each autovacuum worker process. Used to store dead tuple IDs, maximum effective value is 1GB.',
+	'vacuum_cleanup_index_scale_factor': 'Scale factor for index cleanup. Used to determine when to trigger index cleanup.',
+	'vacuum_cost_limit': 'Vacuum cost amount available, which is divided among the concurrent vacuuming operations of an active VACUUM.',
+	'vacuum_cost_delay': 'Vacuum cost delay in milliseconds. When the cost limit has been reached, the process will sleep for this amount of time.',
+	'vacuum_cost_page_dirty': 'Vacuum cost for a page that dirtied by vacuuming. Cost weight for dirty pages during VACUUM.',
+	'vacuum_cost_page_hit': 'Vacuum cost for a page found in the shared buffer cache. Cost weight for cached pages during VACUUM.',
+	'vacuum_cost_page_miss': 'Vacuum cost for a page not found in the shared buffer cache. Cost weight for uncached pages during VACUUM.',
+	'vacuum_defer_cleanup_age': 'Number of transactions by which VACUUM and HOT updates should defer cleanup of dead row versions. Used in replication environments.',
+	'vacuum_freeze_min_age': 'Minimum age at which VACUUM should freeze a table row. Controls when transaction IDs are frozen.',
+	'vacuum_freeze_table_age': 'Age at which VACUUM should scan the whole table to freeze tuples. When a table\'s transaction ID age exceeds this value, VACUUM will trigger freezing.',
+	'vacuum_multixact_freeze_min_age': 'Minimum age at which VACUUM should freeze a table row\'s multixact ID. Controls when multixact IDs are frozen.',
+	'vacuum_multixact_freeze_table_age': 'Age at which VACUUM should scan the whole table to freeze multixact IDs.',
+
+	// WAL related parameters
+	'wal_sender_timeout': 'Maximum time to wait for WAL replication. Timeout for WAL sender process waiting for receiver acknowledgment.',
+	'wal_compression': 'Enables compression of full-page writes written in WAL. Compresses WAL data to reduce I/O and storage space.',
+	'jit': 'Enables just-in-time compilation of queries. JIT compilation can speed up execution of complex queries. Requires server restart to take effect.',
+	'wal_buffers': 'Amount of shared memory used for WAL data. Used to cache WAL data, increasing this value can smooth response times after checkpoints.',
+	'wal_keep_size': 'Specifies the minimum size to retain in the pg_wal directory to allow standby servers to fetch WAL files for streaming replication.',
+	'wal_writer_flush_after': 'Amount of WAL written out by WAL writer that triggers a flush. Amount of data WAL writer writes before flushing to disk.',
+	'min_wal_size': 'Minimum size to shrink the WAL to. WAL files will not be shrunk below this value.',
+	'max_wal_size': 'Maximum size to let the WAL grow to between automatic WAL checkpoints. When WAL size exceeds this value, a checkpoint will be forced.',
+
+	// Connection and timeout related parameters
+	'idle_in_transaction_session_timeout': 'Terminate any session that has been idle in a transaction state longer than the specified duration. Prevents connection leaks.',
+	'statement_timeout': 'Terminates any statement that takes longer than the specified amount of time.',
+	'tcp_keepalives_count': 'Maximum number of TCP keepalive probes to send before giving up and closing the connection.',
+	'tcp_keepalives_idle': 'Number of seconds of inactivity after which TCP should send a keepalive message to the peer.',
+	'tcp_keepalives_interval': 'Number of seconds between TCP keepalive probes.',
+
+	// Core performance parameters
+	'max_connections': 'Maximum number of concurrent connections. Affects shared memory allocation, requires server restart to take effect.',
+	'shared_buffers': 'Amount of memory the database server uses for shared memory buffers. This is one of the most important PostgreSQL performance parameters. Can only be set at server start, requires server restart.',
+	'effective_cache_size': 'An estimate of how much memory is available for disk caching by the operating system and within the database itself. Used by the query planner to estimate available cache, affects query plan selection.',
+	'maintenance_work_mem': 'Specifies the maximum amount of memory to be used by maintenance operations, such as VACUUM, CREATE INDEX, and ALTER TABLE ADD FOREIGN KEY. Increasing this value can speed up these operations.',
+	'checkpoint_completion_target': 'Target duration of checkpoint spread between checkpoints (0.0-1.0). Controls checkpoint write smoothness, 0.9 means complete writes within 90% of checkpoint interval.',
+	'checkpoint_timeout': 'Maximum time between automatic WAL checkpoints. Maximum time interval between automatic checkpoints.',
+	'default_statistics_target': 'Sets the default statistics target for table columns that have not had a statistics target set via ALTER TABLE SET STATISTICS. Controls the amount of statistics collected by ANALYZE, affects query optimizer choices.',
+	'random_page_cost': 'Sets the planner\'s estimate of the cost of a non-sequentially-fetched disk page. Used by query planner to estimate random I/O cost, typically set to 1.1 for SSD, 4.0 for HDD.',
+	'effective_io_concurrency': 'Sets the number of concurrent disk I/O operations that the system can execute. Used by query planner to estimate concurrent I/O capability, typically set to 200 for SSD, 2-4 for HDD.',
+	'work_mem': 'Specifies the amount of memory to be used by internal sort operations and hash tables before writing to temporary disk files. Each operation can use this value, multiple operations will accumulate.',
+	'huge_pages': 'Whether to use huge pages. Can only be set at server start, requires server restart.',
+
+	// Parallel processing related parameters
+	'max_worker_processes': 'Maximum number of background worker processes. Limits the total number of background worker processes, including autovacuum, WAL senders, etc. Can only be set at server start, requires server restart.',
+	'max_parallel_workers_per_gather': 'Maximum number of parallel workers that can be started by a single Gather node. Controls the parallelism of a single query. Can only be set at server start, requires server restart.',
+	'max_parallel_workers': 'Maximum number of parallel workers that can be active at one time. Limits the total number of parallel workers for all parallel queries. Can only be set at server start, requires server restart.',
+	'max_parallel_maintenance_workers': 'Maximum number of parallel workers that can be started by a single utility command. Used for parallel execution of maintenance operations like CREATE INDEX, VACUUM. Can only be set at server start, requires server restart.',
+
+	// Background writer related parameters
+	'bgwriter_lru_maxpages': 'Maximum number of pages written by the background writer in each round. Controls the number of pages written by background writer each time.',
+	'bgwriter_lru_multiplier': 'Multiplier used to estimate the number of pages that will be needed during the next round. Used to calculate the number of pages to write.',
+
+	// Other optimization parameters
+	'enable_partitionwise_aggregate': 'Enables or disables the query planner\'s ability to generate partitionwise aggregation plans. Allows partition-level aggregation on partitioned tables.',
+	'enable_partitionwise_join': 'Enables or disables the query planner\'s ability to generate partitionwise join plans. Allows partition-level joins between partitioned tables.',
+	'extra_float_digits': 'Sets the number of digits displayed for floating-point values. Controls the precision of floating-point numbers in output.',
+	'max_wal_senders': 'Maximum number of simultaneously running WAL sender processes. Limits the number of WAL sender processes that can run simultaneously. Can only be set at server start, requires server restart.',
+	'superuser_reserved_connections': 'Number of connection slots reserved for superusers. Superusers can connect even when max_connections is reached.',
+	'temp_file_limit': 'Maximum amount of disk space that a session can use for temporary files. Limits the temporary file size that a single session can use.',
+	'track_functions': 'Enables tracking of function call counts and time used. Controls whether function call statistics are tracked.',
+	'track_io_timing': 'Enables timing of database I/O operations. When enabled, I/O time statistics can be viewed in pg_stat_statements.',
+	'TimeZone': 'Sets the time zone for displaying and interpreting time stamps. Sets the server\'s default time zone.',
+	'max_replication_slots': 'Maximum number of replication slots that can be created. Limits the number of replication slots that can be created. Can only be set at server start, requires server restart.',
+	'max_stack_depth': 'Maximum safe depth of the server\'s execution stack (KB). Limits the maximum depth of the server execution stack. Can only be set at server start, requires server restart.',
+	'lc_messages': 'Sets the locale to use for formatting error messages and other messages. Sets the server message locale.',
+
+	// Logging related parameters
+	'log_destination': 'Sets the output destination for log messages. Can be set to stderr, syslog, csvlog, etc.',
+	'logging_collector': 'Enables the background worker process that captures log messages sent to stderr and redirects them into log files.',
+	'log_directory': 'Directory where log files are written. Specifies the storage directory for log files.',
+	'log_filename': 'Sets the file name pattern for log files. Specifies the naming pattern for log files, supports strftime format.',
+	'log_truncate_on_rotation': 'When logging_collector is enabled, truncate (overwrite) existing log files of the same name, rather than appending to them.',
+	'log_min_messages': 'Controls which message levels are written to the server log. Controls which level of messages are logged.',
+	'log_checkpoints': 'Causes checkpoints and restartpoints to be logged in the server log. Logs detailed information for each checkpoint.',
+	'log_lock_waits': 'Controls whether a log message is produced when a session waits longer than deadlock_timeout to acquire a lock. Logs sessions waiting for locks exceeding deadlock_timeout.',
+	'log_connections': 'Causes each attempted connection to the server to be logged. Logs all client connection attempts.',
+	'log_disconnections': 'Causes session terminations to be logged. Logs all client disconnections.',
+	'log_line_prefix': 'Controls what information is written to the server log for each log message. Sets the prefix format for each log line, supports multiple placeholders.',
+	'log_timezone': 'Sets the time zone to use when writing log timestamps. Sets the time zone for timestamps in logs.',
+	'log_min_duration_statement': 'Causes the duration of each completed statement to be logged if the statement ran for at least the specified number of milliseconds. Statements exceeding this time will be logged.',
+	'log_temp_files': 'Causes temporary file names and sizes to be logged when a temporary file is deleted. Temporary files exceeding this size will be logged.',
+	'log_min_duration_sample': 'Minimum execution time above which a sample of statements will be logged. Statements exceeding this time will be sampled and logged.',
+	'log_statement_sample_rate': 'Fraction of statements exceeding log_min_duration_sample to be logged. Controls the proportion of statements that are sampled and logged (0.0-1.0).'
+}
+
 /**
  * 获取参数的官方文档链接
  * @param {string} paramName - 参数名
@@ -135,9 +236,13 @@ export function getParamDocUrl(paramName, dbVersion = '13') {
 /**
  * 获取参数的说明
  * @param {string} paramName - 参数名
+ * @param {string} lang - 语言代码 ('zh' 或 'en')
  * @returns {string} 参数说明，如果不存在则返回默认说明
  */
-export function getParamDescription(paramName) {
+export function getParamDescription(paramName, lang = 'zh') {
+	if (lang === 'en') {
+		return paramDescriptionsEn[paramName] || 'Please refer to PostgreSQL official documentation for detailed description of this parameter'
+	}
 	return paramDescriptions[paramName] || '该参数的详细说明请参考 PostgreSQL 官方文档'
 }
 
