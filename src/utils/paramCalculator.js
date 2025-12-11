@@ -2,6 +2,73 @@
  * PostgreSQL 参数计算工具
  * 根据CPU核心数、内存大小和存储类型计算优化的PostgreSQL参数
  */
+import { getParamCategory } from './paramCategories.js'
+
+/**
+ * 智能选择内存单位（GB/MB/KB），优先使用整数单位
+ * @param {number} bytes - 字节数
+ * @returns {string} 格式化的值，如 "16GB", "512MB", "8192kB"
+ */
+function formatMemorySize(bytes) {
+	const gb = bytes / 1024 / 1024 / 1024
+	if (gb >= 1 && gb % 1 === 0) {
+		return `${gb}GB`
+	}
+
+	const mb = bytes / 1024 / 1024
+	if (mb >= 1 && mb % 1 === 0) {
+		return `${mb}MB`
+	}
+
+	const kb = bytes / 1024
+	if (kb >= 1 && kb % 1 === 0) {
+		return `${kb}kB`
+	}
+
+	// 如果都不是整数，使用KB并保留2位小数
+	return `${kb.toFixed(2)}kB`
+}
+
+/**
+ * 智能选择内存单位（从KB开始）
+ * @param {number} kb - KB数
+ * @returns {string} 格式化的值，如 "16GB", "512MB", "8192kB"
+ */
+function formatMemorySizeFromKB(kb) {
+	const gb = kb / 1024 / 1024
+	if (gb >= 1 && gb % 1 === 0) {
+		return `${gb}GB`
+	}
+
+	const mb = kb / 1024
+	if (mb >= 1 && mb % 1 === 0) {
+		return `${mb}MB`
+	}
+
+	if (kb % 1 === 0) {
+		return `${kb}kB`
+	}
+
+	return `${kb.toFixed(2)}kB`
+}
+
+/**
+ * 智能选择内存单位（从MB开始）
+ * @param {number} mb - MB数
+ * @returns {string} 格式化的值，如 "16GB", "512MB"
+ */
+function formatMemorySizeFromMB(mb) {
+	const gb = mb / 1024
+	if (gb >= 1 && gb % 1 === 0) {
+		return `${gb}GB`
+	}
+
+	if (mb % 1 === 0) {
+		return `${mb}MB`
+	}
+
+	return `${mb.toFixed(2)}MB`
+}
 
 /**
  * 计算所有PostgreSQL参数
@@ -13,171 +80,203 @@
  * @returns {Array} 参数数组，每个元素包含 {name, value}
  */
 export function calculateParams(config) {
-  const { cpuCores, memoryGB, storageType } = config
-  const memoryBytes = memoryGB * 1024 * 1024 * 1024 // 转换为字节
-  const memoryMB = memoryGB * 1024 // 转换为MB
+	const { cpuCores, memoryGB, storageType } = config
+	// DBInstanceClassMemory = 内存GB * 1024 * 1024 * 1024 (转换为字节)
+	const DBInstanceClassMemory = memoryGB * 1024 * 1024 * 1024
+	const memoryMB = memoryGB * 1024 // 转换为MB
 
-  const params = []
+	const params = []
 
-  // Autovacuum 相关参数
-  params.push({ name: 'autovacuum', value: 'on' })
-  params.push({ name: 'autovacuum_analyze_scale_factor', value: '0.05' })
-  params.push({ name: 'autovacuum_analyze_threshold', value: '50' })
-  params.push({ name: 'autovacuum_naptime', value: '15' })
-  params.push({ name: 'autovacuum_vacuum_cost_delay', value: '2' })
-  params.push({ name: 'autovacuum_vacuum_cost_limit', value: '200' })
-  params.push({ name: 'autovacuum_vacuum_scale_factor', value: '0.05' })
-  params.push({ name: 'autovacuum_vacuum_threshold', value: '50' })
-  params.push({ name: 'log_autovacuum_min_duration', value: '10000' })
-  params.push({ name: 'autovacuum_freeze_max_age', value: '200000000' })
-  params.push({ name: 'autovacuum_multixact_freeze_max_age', value: '400000000' })
-  
-  // autovacuum_max_workers = LEAST(GREATEST(DBInstanceClassMemory/17179869184, 3), 10)
-  const autovacuumMaxWorkers = Math.min(Math.max(Math.floor(memoryBytes / 17179869184), 3), 10)
-  params.push({ name: 'autovacuum_max_workers', value: autovacuumMaxWorkers.toString() })
-  
-  // autovacuum_work_mem = GREATEST(DBInstanceClassMemory/65536, 131072) (转换为MB)
-  const autovacuumWorkMemBytes = Math.max(Math.floor(memoryBytes / 65536), 131072)
-  const autovacuumWorkMemMB = Math.floor(autovacuumWorkMemBytes / 1024 / 1024)
-  params.push({ name: 'autovacuum_work_mem', value: `${autovacuumWorkMemMB}MB` })
+	// 参数分组定义
+	const addParam = (name, value, category) => {
+		params.push({ name, value, category })
+	}
 
-  // Vacuum 相关参数
-  params.push({ name: 'vacuum_cleanup_index_scale_factor', value: '0.1' })
-  params.push({ name: 'vacuum_cost_limit', value: '10000' })
-  params.push({ name: 'vacuum_cost_delay', value: '0' })
-  params.push({ name: 'vacuum_cost_page_dirty', value: '20' })
-  params.push({ name: 'vacuum_cost_page_hit', value: '1' })
-  params.push({ name: 'vacuum_cost_page_miss', value: '2' })
-  params.push({ name: 'vacuum_defer_cleanup_age', value: '0' })
-  params.push({ name: 'vacuum_freeze_min_age', value: '50000000' })
-  params.push({ name: 'vacuum_freeze_table_age', value: '200000000' })
-  params.push({ name: 'vacuum_multixact_freeze_min_age', value: '5000000' })
-  params.push({ name: 'vacuum_multixact_freeze_table_age', value: '200000000' })
+	// ====================== 自动清理相关配置 ======================
+	const autovacuumCategory = '自动清理相关配置'
+	addParam('autovacuum', 'on', autovacuumCategory)
+	addParam('autovacuum_analyze_scale_factor', '0.05', autovacuumCategory)
+	addParam('autovacuum_analyze_threshold', '50', autovacuumCategory)
+	addParam('autovacuum_naptime', '15', autovacuumCategory)
+	addParam('autovacuum_vacuum_cost_delay', '2', autovacuumCategory)
+	addParam('autovacuum_vacuum_cost_limit', '200', autovacuumCategory)
+	addParam('autovacuum_vacuum_scale_factor', '0.05', autovacuumCategory)
+	addParam('autovacuum_vacuum_threshold', '50', autovacuumCategory)
+	addParam('log_autovacuum_min_duration', '10000', autovacuumCategory)
+	addParam('autovacuum_freeze_max_age', '200000000', autovacuumCategory)
+	addParam('autovacuum_multixact_freeze_max_age', '400000000', autovacuumCategory)
 
-  // WAL 相关参数
-  params.push({ name: 'wal_sender_timeout', value: '5min' })
-  params.push({ name: 'wal_compression', value: 'on' })
-  params.push({ name: 'jit', value: 'off' })
+	// autovacuum_max_workers = LEAST(GREATEST(DBInstanceClassMemory/17179869184, 3), 10)
+	// DBInstanceClassMemory 是字节，17179869184 = 16GB
+	const autovacuumMaxWorkers = Math.min(Math.max(Math.floor(DBInstanceClassMemory / 17179869184), 3), 10)
+	addParam('autovacuum_max_workers', autovacuumMaxWorkers.toString(), autovacuumCategory)
 
-  // 连接和超时相关参数
-  params.push({ name: 'idle_in_transaction_session_timeout', value: '6min' })
-  params.push({ name: 'statement_timeout', value: '5min' })
-  params.push({ name: 'tcp_keepalives_count', value: '10' })
-  params.push({ name: 'tcp_keepalives_idle', value: '45' })
-  params.push({ name: 'tcp_keepalives_interval', value: '10' })
+	// autovacuum_work_mem = GREATEST(DBInstanceClassMemory/65536, 131072)
+	// DBInstanceClassMemory 是字节，除以65536后结果单位就是KB
+	const autovacuumWorkMemKB = Math.max(Math.floor(DBInstanceClassMemory / 65536), 131072)
+	addParam('autovacuum_work_mem', formatMemorySizeFromKB(autovacuumWorkMemKB), autovacuumCategory)
 
-  // 核心性能参数
-  // max_connections = 核心数 * 200
-  const maxConnections = cpuCores * 200
-  params.push({ name: 'max_connections', value: maxConnections.toString() })
+	// Vacuum 相关参数
+	addParam('vacuum_cleanup_index_scale_factor', '0.1', autovacuumCategory)
+	addParam('vacuum_cost_limit', '10000', autovacuumCategory)
+	addParam('vacuum_cost_delay', '0', autovacuumCategory)
+	addParam('vacuum_cost_page_dirty', '20', autovacuumCategory)
+	addParam('vacuum_cost_page_hit', '1', autovacuumCategory)
+	addParam('vacuum_cost_page_miss', '2', autovacuumCategory)
+	addParam('vacuum_defer_cleanup_age', '0', autovacuumCategory)
+	addParam('vacuum_freeze_min_age', '50000000', autovacuumCategory)
+	addParam('vacuum_freeze_table_age', '200000000', autovacuumCategory)
+	addParam('vacuum_multixact_freeze_min_age', '5000000', autovacuumCategory)
+	addParam('vacuum_multixact_freeze_table_age', '200000000', autovacuumCategory)
 
-  // shared_buffers = 内存四分之一 (转换为MB)
-  const sharedBuffersMB = Math.floor(memoryMB / 4)
-  params.push({ name: 'shared_buffers', value: `${sharedBuffersMB}MB` })
+	// ====================== 性能相关参数 ======================
+	const performanceCategory = '性能相关参数'
+	addParam('wal_sender_timeout', '5min', performanceCategory)
+	addParam('wal_compression', 'on', performanceCategory)
+	addParam('jit', 'off', performanceCategory)
 
-  // effective_cache_size = DBInstanceClassMemory/16384 (转换为MB，这个值通常是内存的3/4)
-  // 但根据公式 DBInstanceClassMemory/16384，需要转换为MB
-  // 16384 = 16KB，所以除以16384再乘以16KB = 内存大小，但通常设置为内存的3/4
-  const effectiveCacheSizeMB = Math.floor(memoryMB * 3 / 4)
-  params.push({ name: 'effective_cache_size', value: `${effectiveCacheSizeMB}MB` })
+	// max_connections = 核心数 * 200
+	const maxConnections = cpuCores * 200
+	addParam('max_connections', maxConnections.toString(), performanceCategory)
 
-  // maintenance_work_mem = LEAST(DBInstanceClassMemory/65536, 4194304) (转换为MB)
-  const maintenanceWorkMemBytes = Math.min(Math.floor(memoryBytes / 65536), 4194304)
-  const maintenanceWorkMemMB = Math.floor(maintenanceWorkMemBytes / 1024 / 1024)
-  params.push({ name: 'maintenance_work_mem', value: `${maintenanceWorkMemMB}MB` })
+	// shared_buffers = 内存四分之一
+	const sharedBuffersBytes = DBInstanceClassMemory / 4
+	addParam('shared_buffers', formatMemorySize(sharedBuffersBytes), performanceCategory)
 
-  params.push({ name: 'checkpoint_completion_target', value: '0.9' })
+	// effective_cache_size = DBInstanceClassMemory/16384 (结果单位是8kB，需要转换为字节)
+	// 32GB * 1024^3 / 16384 = 2097152 8kB
+	// 转换为字节: 2097152 * 8 * 1024 = 17179869184 字节
+	const effectiveCacheSize8kB = Math.floor(DBInstanceClassMemory / 16384)
+	const effectiveCacheSizeBytes = effectiveCacheSize8kB * 8 * 1024
+	addParam('effective_cache_size', formatMemorySize(effectiveCacheSizeBytes), performanceCategory)
 
-  // wal_buffers = LEAST(GREATEST(DBInstanceClassMemory/2097152, 2048), 16384)
-  const walBuffers = Math.min(Math.max(Math.floor(memoryBytes / 2097152), 2048), 16384)
-  params.push({ name: 'wal_buffers', value: `${walBuffers}kB` })
+	// maintenance_work_mem = LEAST(DBInstanceClassMemory/65536, 4194304)
+	// DBInstanceClassMemory 是字节，除以65536后结果单位就是KB
+	// 32GB * 1024^3 / 65536 = 524288 kB
+	const maintenanceWorkMemKB = Math.min(Math.floor(DBInstanceClassMemory / 65536), 4194304)
+	addParam('maintenance_work_mem', formatMemorySizeFromKB(maintenanceWorkMemKB), performanceCategory)
 
-  params.push({ name: 'wal_keep_size', value: '2048MB' })
-  params.push({ name: 'wal_writer_flush_after', value: '128' })
-  params.push({ name: 'checkpoint_timeout', value: '6min' })
-  params.push({ name: 'default_statistics_target', value: '100' })
+	addParam('checkpoint_completion_target', '0.9', performanceCategory)
 
-  // random_page_cost 和 effective_io_concurrency 根据存储类型
-  if (storageType === 'ssd') {
-    params.push({ name: 'random_page_cost', value: '1.1' })
-    params.push({ name: 'effective_io_concurrency', value: '200' })
-  } else {
-    params.push({ name: 'random_page_cost', value: '4' })
-    params.push({ name: 'effective_io_concurrency', value: '2' })
-  }
+	// wal_buffers = LEAST(GREATEST(DBInstanceClassMemory/2097152, 2048), 16384) (结果单位是8kB，需要转换为字节)
+	// 32GB * 1024^3 / 2097152 = 16384 8kB
+	// 转换为字节: 16384 * 8 * 1024 = 134217728 字节
+	const walBuffers8kB = Math.min(Math.max(Math.floor(DBInstanceClassMemory / 2097152), 2048), 16384)
+	const walBuffersBytes = walBuffers8kB * 8 * 1024
+	addParam('wal_buffers', formatMemorySize(walBuffersBytes), performanceCategory)
 
-  // work_mem = GREATEST(DBInstanceClassMemory/4194304, 4096) (转换为MB)
-  const workMemBytes = Math.max(Math.floor(memoryBytes / 4194304), 4096)
-  const workMemMB = Math.floor(workMemBytes / 1024 / 1024)
-  params.push({ name: 'work_mem', value: `${workMemMB}MB` })
+	addParam('wal_keep_size', '2048MB', performanceCategory)
+	// wal_writer_flush_after 单位是8kB，转换为MB
+	// 128 * 8KB = 1024 KB = 1 MB
+	const walWriterFlushAfter8kB = 128
+	const walWriterFlushAfterBytes = walWriterFlushAfter8kB * 8 * 1024
+	addParam('wal_writer_flush_after', formatMemorySize(walWriterFlushAfterBytes), performanceCategory)
+	addParam('checkpoint_timeout', '6min', performanceCategory)
+	addParam('default_statistics_target', '100', performanceCategory)
 
-  params.push({ name: 'huge_pages', value: 'try' })
+	// random_page_cost 和 effective_io_concurrency 根据存储类型
+	// 参考文章https://www.cnblogs.com/xibuhaohao/articles/19254482 
+	if (storageType === 'ssd') {
+		addParam('random_page_cost', '1.1', performanceCategory)
+		addParam('effective_io_concurrency', '200', performanceCategory)
+	} else {
+		addParam('random_page_cost', '4', performanceCategory)
+		addParam('effective_io_concurrency', '4', performanceCategory)
+	}
 
-  // min_wal_size = LEAST(GREATEST(DBInstanceClassMemory/8388608, 256), 8192)
-  const minWalSizeMB = Math.min(Math.max(Math.floor(memoryBytes / 8388608 / 1024 / 1024), 256), 8192)
-  params.push({ name: 'min_wal_size', value: `${minWalSizeMB}MB` })
+	// work_mem = GREATEST(DBInstanceClassMemory/4194304, 4096)
+	// DBInstanceClassMemory 是字节，除以4194304后结果单位就是KB
+	// 32GB * 1024^3 / 4194304 = 8192 kB
+	const workMemKB = Math.max(Math.floor(DBInstanceClassMemory / 4194304), 4096)
+	addParam('work_mem', formatMemorySizeFromKB(workMemKB), performanceCategory)
 
-  // max_wal_size = LEAST(GREATEST(DBInstanceClassMemory/2097152, 2048), 16384)
-  const maxWalSizeMB = Math.min(Math.max(Math.floor(memoryBytes / 2097152 / 1024 / 1024), 2048), 16384)
-  params.push({ name: 'max_wal_size', value: `${maxWalSizeMB}MB` })
+	addParam('huge_pages', 'try', performanceCategory)
 
-  // 并行处理相关参数
-  // max_worker_processes = 核心数 * 2
-  const maxWorkerProcesses = cpuCores * 2
-  params.push({ name: 'max_worker_processes', value: maxWorkerProcesses.toString() })
+	// min_wal_size = LEAST(GREATEST(DBInstanceClassMemory/8388608, 256), 8192)
+	// DBInstanceClassMemory 是字节，除以8388608后结果单位就是MB
+	// 32GB * 1024^3 / 8388608 = 4096 MB
+	// 公式中的256和8192都是MB单位
+	const minWalSizeMB = Math.min(Math.max(Math.floor(DBInstanceClassMemory / 8388608), 256), 8192)
+	addParam('min_wal_size', formatMemorySizeFromMB(minWalSizeMB), performanceCategory)
 
-  // max_parallel_workers_per_gather = GREATEST(DBInstanceClassCPU/2, 2)
-  const maxParallelWorkersPerGather = Math.max(Math.floor(cpuCores / 2), 2)
-  params.push({ name: 'max_parallel_workers_per_gather', value: maxParallelWorkersPerGather.toString() })
+	// max_wal_size = LEAST(GREATEST(DBInstanceClassMemory/2097152, 2048), 16384)
+	// DBInstanceClassMemory 是字节，除以2097152后结果单位就是MB
+	// 32GB * 1024^3 / 2097152 = 16384 MB
+	// 公式中的2048和16384都是MB单位
+	const maxWalSizeMB = Math.min(Math.max(Math.floor(DBInstanceClassMemory / 2097152), 2048), 16384)
+	addParam('max_wal_size', formatMemorySizeFromMB(maxWalSizeMB), performanceCategory)
 
-  // max_parallel_workers = GREATEST(DBInstanceClassCPU*3/4, 8)
-  const maxParallelWorkers = Math.max(Math.floor(cpuCores * 3 / 4), 8)
-  params.push({ name: 'max_parallel_workers', value: maxParallelWorkers.toString() })
+	// 并行处理相关参数
+	// max_worker_processes = 核心数 * 2
+	const maxWorkerProcesses = cpuCores * 2
+	addParam('max_worker_processes', maxWorkerProcesses.toString(), performanceCategory)
 
-  // max_parallel_maintenance_workers = GREATEST(DBInstanceClassCPU/2, 2)
-  const maxParallelMaintenanceWorkers = Math.max(Math.floor(cpuCores / 2), 2)
-  params.push({ name: 'max_parallel_maintenance_workers', value: maxParallelMaintenanceWorkers.toString() })
+	// max_parallel_workers_per_gather = GREATEST(DBInstanceClassCPU/2, 2)
+	const maxParallelWorkersPerGather = Math.max(Math.floor(cpuCores / 2), 2)
+	addParam('max_parallel_workers_per_gather', maxParallelWorkersPerGather.toString(), performanceCategory)
 
-  // Background writer 相关参数
-  params.push({ name: 'bgwriter_lru_maxpages', value: '1000' })
-  params.push({ name: 'bgwriter_lru_multiplier', value: '10' })
+	// max_parallel_workers = GREATEST(DBInstanceClassCPU*3/4, 8)
+	const maxParallelWorkers = Math.max(Math.floor(cpuCores * 3 / 4), 8)
+	addParam('max_parallel_workers', maxParallelWorkers.toString(), performanceCategory)
 
-  // 其他优化参数
-  params.push({ name: 'enable_partitionwise_aggregate', value: 'on' })
-  params.push({ name: 'enable_partitionwise_join', value: 'on' })
-  params.push({ name: 'extra_float_digits', value: '3' })
-  params.push({ name: 'max_wal_senders', value: '16' })
-  params.push({ name: 'superuser_reserved_connections', value: '20' })
+	// max_parallel_maintenance_workers = GREATEST(DBInstanceClassCPU/2, 2)
+	const maxParallelMaintenanceWorkers = Math.max(Math.floor(cpuCores / 2), 2)
+	addParam('max_parallel_maintenance_workers', maxParallelMaintenanceWorkers.toString(), performanceCategory)
 
-  // temp_file_limit = DBInstanceClassMemory/1024 (转换为MB)
-  const tempFileLimitMB = Math.floor(memoryBytes / 1024 / 1024 / 1024)
-  params.push({ name: 'temp_file_limit', value: `${tempFileLimitMB}MB` })
+	// Background writer 相关参数
+	addParam('bgwriter_lru_maxpages', '1000', performanceCategory)
+	addParam('bgwriter_lru_multiplier', '10', performanceCategory)
 
-  params.push({ name: 'track_functions', value: 'pl' })
-  params.push({ name: 'track_io_timing', value: 'on' })
-  params.push({ name: 'TimeZone', value: 'Asia/Shanghai' })
-  params.push({ name: 'max_replication_slots', value: '16' })
-  params.push({ name: 'max_stack_depth', value: '2048' })
-  params.push({ name: 'lc_messages', value: 'en_US.UTF-8' })
+	// 其他优化参数
+	addParam('enable_partitionwise_aggregate', 'on', performanceCategory)
+	addParam('enable_partitionwise_join', 'on', performanceCategory)
+	addParam('extra_float_digits', '3', performanceCategory)
+	addParam('max_wal_senders', '16', performanceCategory)
+	addParam('superuser_reserved_connections', '20', performanceCategory)
 
-  // 日志相关参数
-  params.push({ name: 'log_destination', value: 'stderr' })
-  params.push({ name: 'logging_collector', value: 'on' })
-  params.push({ name: 'log_directory', value: 'pg_log' })
-  params.push({ name: 'log_filename', value: 'postgresql-%d.log' })
-  params.push({ name: 'log_truncate_on_rotation', value: 'on' })
-  params.push({ name: 'log_min_messages', value: 'NOTICE' })
-  params.push({ name: 'log_checkpoints', value: 'on' })
-  params.push({ name: 'log_lock_waits', value: 'on' })
-  params.push({ name: 'log_connections', value: 'off' })
-  params.push({ name: 'log_disconnections', value: 'off' })
-  params.push({ name: 'log_line_prefix', value: '%m [%p][%a] %u %d %r ' })
-  params.push({ name: 'log_timezone', value: 'Asia/Shanghai' })
-  params.push({ name: 'log_min_duration_statement', value: '5000ms' })
-  params.push({ name: 'log_temp_files', value: '131072' })
-  params.push({ name: 'log_min_duration_sample', value: '500ms' })
-  params.push({ name: 'log_statement_sample_rate', value: '0.2' })
+	// temp_file_limit = DBInstanceClassMemory/1024 (结果单位就是KB)
+	// 32GB * 1024^3 / 1024 = 33554432 kB
+	const tempFileLimitKB = Math.floor(DBInstanceClassMemory / 1024)
+	addParam('temp_file_limit', formatMemorySizeFromKB(tempFileLimitKB), performanceCategory)
 
-  return params
+	addParam('track_io_timing', 'on', performanceCategory)
+	addParam('max_replication_slots', '16', performanceCategory)
+	addParam('max_stack_depth', '2048', performanceCategory)
+
+	// ====================== 超时相关 ======================
+	const timeoutCategory = '超时相关'
+	addParam('idle_in_transaction_session_timeout', '6min', timeoutCategory)
+	addParam('statement_timeout', '5min', timeoutCategory)
+	addParam('tcp_keepalives_count', '10', timeoutCategory)
+	addParam('tcp_keepalives_idle', '45', timeoutCategory)
+	addParam('tcp_keepalives_interval', '10', timeoutCategory)
+
+	// ====================== 日志记录相关 ======================
+	const loggingCategory = '日志记录相关'
+	addParam('log_destination', 'stderr', loggingCategory)
+	addParam('logging_collector', 'on', loggingCategory)
+	addParam('log_directory', 'pg_log', loggingCategory)
+	addParam('log_filename', 'postgresql-%m-%d.log', loggingCategory)
+	addParam('log_truncate_on_rotation', 'on', loggingCategory)
+	addParam('log_min_messages', 'NOTICE', loggingCategory)
+	addParam('log_checkpoints', 'on', loggingCategory)
+	addParam('log_lock_waits', 'on', loggingCategory)
+	addParam('log_connections', 'off', loggingCategory)
+	addParam('log_disconnections', 'off', loggingCategory)
+	addParam('log_line_prefix', '%m [%p][%a] %u %d %r ', loggingCategory)
+	addParam('log_timezone', 'Asia/Shanghai', loggingCategory)
+	addParam('log_min_duration_statement', '5000ms', loggingCategory)
+	addParam('log_temp_files', '131072', loggingCategory)
+	addParam('log_min_duration_sample', '500ms', loggingCategory)
+	addParam('log_statement_sample_rate', '0.2', loggingCategory)
+	addParam('lc_messages', 'en_US.UTF-8', loggingCategory)
+
+	// ====================== 其他参数 ======================
+	const otherCategory = '其他参数'
+	addParam('track_functions', 'pl', otherCategory)
+	addParam('TimeZone', 'Asia/Shanghai', otherCategory)
+
+
+	return params
 }
 

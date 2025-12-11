@@ -13,9 +13,9 @@
             <label for="dbVersion">PostgreSQL 版本</label>
             <select id="dbVersion" v-model="config.dbVersion" required>
               <option value="13">PostgreSQL 13</option>
-              <option value="14">PostgreSQL 14</option>
+              <!-- <option value="14">PostgreSQL 14</option>
               <option value="15">PostgreSQL 15</option>
-              <option value="16">PostgreSQL 16</option>
+              <option value="16">PostgreSQL 16</option> -->
             </select>
           </div>
 
@@ -75,17 +75,66 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(param, index) in generatedParams" :key="index">
-                <td class="param-name">{{ param.name }}</td>
-                <td class="param-value">
-                  <input
-                    type="text"
-                    v-model="param.value"
-                    class="param-input"
-                    @blur="updateParam(index, $event.target.value)"
-                  />
-                </td>
-              </tr>
+              <template v-for="(group, category) in groupedParams" :key="category">
+                <tr class="category-header">
+                  <td colspan="2" class="category-title">{{ category }}</td>
+                </tr>
+                <tr v-for="(param, index) in group" :key="`${category}-${index}`">
+                  <td class="param-name">
+                    <div class="param-name-wrapper">
+                      <span>{{ param.name }}</span>
+                      <a 
+                        :href="getParamDocUrl(param.name, config.dbVersion)"
+                        target="_blank"
+                        class="param-doc-link"
+                        :title="`查看 ${param.name} 的官方文档`"
+                        @click.stop
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                          <polyline points="15 3 21 3 21 9"></polyline>
+                          <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                      </a>
+                    </div>
+                  </td>
+                  <td class="param-value">
+                    <div class="param-value-wrapper">
+                      <input
+                        type="text"
+                        v-model="param.value"
+                        class="param-input"
+                        @blur="updateParamByCategory(category, index, $event.target.value)"
+                      />
+                      <span 
+                        class="param-help-icon"
+                        :title="getParamDescription(param.name)"
+                        @mouseenter="showTooltip($event, param.name)"
+                        @mouseleave="hideTooltip"
+                      >?</span>
+                    </div>
+                    <div 
+                      v-if="tooltip.visible && tooltip.paramName === param.name"
+                      class="param-tooltip"
+                      :style="{ top: tooltip.top + 'px', left: tooltip.left + 'px' }"
+                      @mouseenter="keepTooltipVisible(param.name)"
+                      @mouseleave="hideTooltip"
+                    >
+                      <div class="tooltip-content">
+                        <div class="tooltip-text">{{ getParamDescription(param.name) }}</div>
+                        <a 
+                          :href="getParamDocUrl(param.name, config.dbVersion)"
+                          target="_blank"
+                          class="tooltip-link"
+                          @click.stop
+                        >
+                          查看官方文档 →
+                        </a>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -95,8 +144,9 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { calculateParams } from './utils/paramCalculator'
+import { getParamDescription, getParamDocUrl } from './utils/paramDescriptions'
 
 export default {
   name: 'App',
@@ -109,14 +159,103 @@ export default {
     })
 
     const generatedParams = ref([])
+    const groupedParams = computed(() => {
+      const groups = {}
+      generatedParams.value.forEach(param => {
+        const category = param.category || '其他参数'
+        if (!groups[category]) {
+          groups[category] = []
+        }
+        groups[category].push(param)
+      })
+      // 按固定顺序排序
+      const categoryOrder = ['性能相关参数', '自动清理相关配置', '超时相关', '日志记录相关', '其他参数']
+      const orderedGroups = {}
+      categoryOrder.forEach(category => {
+        if (groups[category]) {
+          orderedGroups[category] = groups[category]
+        }
+      })
+      // 添加其他未分类的
+      Object.keys(groups).forEach(category => {
+        if (!categoryOrder.includes(category)) {
+          orderedGroups[category] = groups[category]
+        }
+      })
+      return orderedGroups
+    })
+    const tooltip = reactive({
+      visible: false,
+      paramName: '',
+      top: 0,
+      left: 0
+    })
+    let tooltipTimeout = null
 
     const generateConfig = () => {
       generatedParams.value = calculateParams(config)
     }
 
+    const showTooltip = (event, paramName) => {
+      const rect = event.target.getBoundingClientRect()
+      
+      tooltip.visible = true
+      tooltip.paramName = paramName
+      tooltip.top = rect.bottom + 5
+      tooltip.left = rect.left
+      
+      // 确保 tooltip 不会超出屏幕右边界
+      setTimeout(() => {
+        const tooltipEl = document.querySelector('.param-tooltip')
+        if (tooltipEl) {
+          const tooltipRect = tooltipEl.getBoundingClientRect()
+          if (tooltipRect.right > window.innerWidth - 10) {
+            tooltip.left = window.innerWidth - tooltipRect.width - 10
+          }
+          if (tooltipRect.left < 10) {
+            tooltip.left = 10
+          }
+        }
+      }, 0)
+    }
+
+    const keepTooltipVisible = (paramName) => {
+      // 保持tooltip可见，当鼠标移到tooltip上时
+      if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout)
+        tooltipTimeout = null
+      }
+      tooltip.visible = true
+      tooltip.paramName = paramName
+    }
+
+    const hideTooltip = () => {
+      // 延迟隐藏，给鼠标移动到tooltip的时间
+      if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout)
+      }
+      tooltipTimeout = setTimeout(() => {
+        tooltip.visible = false
+        tooltipTimeout = null
+      }, 200)
+    }
+
     const updateParam = (index, value) => {
       if (generatedParams.value[index]) {
         generatedParams.value[index].value = value
+      }
+    }
+
+    const updateParamByCategory = (category, index, value) => {
+      const group = groupedParams.value[category]
+      if (group && group[index]) {
+        group[index].value = value
+        // 同步更新 generatedParams
+        const param = group[index]
+        const globalIndex = generatedParams.value.findIndex(p => p.name === param.name)
+        if (globalIndex !== -1) {
+          generatedParams.value[globalIndex].value = value
+        }
       }
     }
 
@@ -163,11 +302,33 @@ export default {
         return `'${str.replace(/'/g, "''")}'`
       }
 
-      const sqlStatements = generatedParams.value
-        .map(param => `ALTER SYSTEM SET ${param.name} = ${escapeValue(param.value)};`)
-        .join('\n')
+      // 按分组组织参数
+      const groupedParams = {}
+      generatedParams.value.forEach(param => {
+        const category = param.category || '其他参数'
+        if (!groupedParams[category]) {
+          groupedParams[category] = []
+        }
+        groupedParams[category].push(param)
+      })
+
+      // 生成带注释分组的 SQL
+      const sqlStatements = []
+      const categoryOrder = ['性能相关参数', '自动清理相关配置', '超时相关', '日志记录相关', '其他参数']
       
-      navigator.clipboard.writeText(sqlStatements).then(() => {
+      categoryOrder.forEach(category => {
+        if (groupedParams[category] && groupedParams[category].length > 0) {
+          sqlStatements.push(`-- ======================${category}=====================`)
+          groupedParams[category].forEach(param => {
+            sqlStatements.push(`ALTER SYSTEM SET ${param.name} = ${escapeValue(param.value)};`)
+          })
+          sqlStatements.push('') // 空行分隔
+        }
+      })
+
+      const sqlText = sqlStatements.join('\n')
+      
+      navigator.clipboard.writeText(sqlText).then(() => {
         if (event && event.target) {
           const btn = event.target
           const originalText = btn.textContent
@@ -208,11 +369,19 @@ export default {
     return {
       config,
       generatedParams,
+      groupedParams,
+      tooltip,
       generateConfig,
       updateParam,
+      updateParamByCategory,
       copyToClipboard,
       copyAlterSystemSQL,
-      downloadConfig
+      downloadConfig,
+      getParamDescription,
+      getParamDocUrl,
+      showTooltip,
+      keepTooltipVisible,
+      hideTooltip
     }
   }
 }
@@ -397,6 +566,19 @@ export default {
   background: #f8f9fa;
 }
 
+.category-header {
+  background: #e9ecef;
+}
+
+.category-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #495057;
+  padding: 12px 15px;
+  text-align: center;
+  border-bottom: 2px solid #dee2e6;
+}
+
 .param-name {
   font-weight: 600;
   color: #495057;
@@ -405,12 +587,44 @@ export default {
   width: 40%;
 }
 
+.param-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.param-doc-link {
+  display: inline-flex;
+  align-items: center;
+  color: #667eea;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+
+.param-doc-link:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.param-doc-link svg {
+  display: block;
+}
+
 .param-value {
   padding: 0;
+  position: relative;
+}
+
+.param-value-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .param-input {
-  width: 100%;
+  flex: 1;
   padding: 8px 12px;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
@@ -429,6 +643,77 @@ export default {
 
 .param-input:hover {
   border-color: #ccc;
+}
+
+.param-help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #667eea;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: help;
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.2s;
+  user-select: none;
+}
+
+.param-help-icon:hover {
+  background: #5568d3;
+  transform: scale(1.1);
+}
+
+.param-tooltip {
+  position: fixed;
+  background: #333;
+  color: white;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  max-width: 320px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  line-height: 1.4;
+  word-wrap: break-word;
+  margin-top: 5px;
+}
+
+.param-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 10px;
+  border: 5px solid transparent;
+  border-bottom-color: #333;
+}
+
+.tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tooltip-text {
+  margin: 0;
+}
+
+.tooltip-link {
+  color: #8ab4f8;
+  text-decoration: none;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  display: inline-block;
+  transition: color 0.2s;
+}
+
+.tooltip-link:hover {
+  color: #a8c8ff;
+  text-decoration: underline;
 }
 
 @media (max-width: 1024px) {
