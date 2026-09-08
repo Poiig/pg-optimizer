@@ -1,51 +1,49 @@
 /**
- * 参数重启信息
- * 定义哪些参数需要重启PostgreSQL服务才能生效
- * 注意：大部分参数可以通过 SELECT pg_reload_conf() 生效，不需要重启服务
+ * 参数重启信息按官方 context 划分。
+ * 多数 GUC 是 sighup/user，只有 postmaster 级才需要重启；JIT/并行度被误标重启会吓跑使用者。
  */
 
-// 需要重启服务的参数列表（只有这些参数需要重启PostgreSQL服务）
-// 根据PostgreSQL官方文档，这些参数只能通过服务器启动时设置
-// 其他参数都可以通过 SELECT pg_reload_conf() 生效
-const restartRequiredParams = [
-	'shared_buffers',              // 共享缓冲区大小 - can only be set at server start
-	'max_connections',             // 最大连接数 - 影响共享内存分配，需要重启
-	'max_worker_processes',        // 最大工作进程数 - can only be set at server start
-	'max_parallel_workers',        // 最大并行工作进程数 - can only be set at server start
-	'max_parallel_workers_per_gather',  // 每个Gather节点的最大并行工作进程数 - can only be set at server start
-	'max_parallel_maintenance_workers', // 最大并行维护工作进程数 - can only be set at server start
-	'max_wal_senders',             // 最大WAL发送进程数 - can only be set at server start
-	'max_replication_slots',        // 最大复制槽数 - can only be set at server start
-	'wal_level',                   // WAL级别 - requires server restart
-	'wal_log_hints',               // WAL日志提示 - requires server restart
-	'max_stack_depth',             // 最大堆栈深度 - can only be set at server start
-	'dynamic_shared_memory_type',  // 动态共享内存类型 - can only be set at server start
-	'huge_pages',                  // 大页内存 - can only be set at server start
-	'max_prepared_transactions',   // 最大预备事务数 - can only be set at server start
-	'shared_preload_libraries',    // 共享预加载库 - requires server restart
-	'jit',                         // JIT编译 - requires server restart
-	'autovacuum_max_workers'       // 最大自动清理工作进程数 - can only be set at server start
-]
+const ALWAYS_RESTART = new Set([
+	'shared_buffers',
+	'wal_buffers',
+	'max_connections',
+	'superuser_reserved_connections',
+	'reserved_connections',
+	'max_worker_processes',
+	'huge_pages',
+	'huge_page_size',
+	'max_wal_senders',
+	'max_replication_slots',
+	'wal_level',
+	'logging_collector',
+	'shared_preload_libraries',
+	'dynamic_shared_memory_type',
+	'max_prepared_transactions',
+	'max_locks_per_transaction',
+	'autovacuum_worker_slots',
+	// 两个 freeze_max_age 是 postmaster 级，只能重启改；表级存储参数才能在线调小。
+	'autovacuum_freeze_max_age',
+	'autovacuum_multixact_freeze_max_age',
+	'io_method'
+])
 
 /**
- * 判断参数是否需要重启
- * @param {string} paramName - 参数名
- * @returns {boolean} 是否需要重启
+ * PG18 起 autovacuum_max_workers 改为 SIGHUP（配合 worker_slots）；更早版本仍是启动参数。
  */
-export function isRestartRequired(paramName) {
-	return restartRequiredParams.includes(paramName)
+export function isRestartRequired(paramName, dbVersion = '13') {
+	if (paramName === 'autovacuum_max_workers') {
+		return Number(dbVersion) < 18
+	}
+	return ALWAYS_RESTART.has(paramName)
 }
 
 /**
  * 获取参数是否需要重启的文本
- * @param {string} paramName - 参数名
- * @param {string} lang - 语言代码 ('zh' 或 'en')
- * @returns {string} "是"/"否" 或 "Yes"/"No"
  */
-export function getRestartRequiredText(paramName, lang = 'zh') {
+export function getRestartRequiredText(paramName, lang = 'zh', dbVersion = '13') {
+	const yes = isRestartRequired(paramName, dbVersion)
 	if (lang === 'en') {
-		return isRestartRequired(paramName) ? 'Yes' : 'No'
+		return yes ? 'Yes' : 'No'
 	}
-	return isRestartRequired(paramName) ? '是' : '否'
+	return yes ? '是' : '否'
 }
-

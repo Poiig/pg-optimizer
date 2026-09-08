@@ -2,6 +2,8 @@
 
 一个基于 Vue 3 的 PostgreSQL 性能参数自动优化工具，根据服务器配置（CPU核心数、内存大小、存储类型）自动生成优化的 PostgreSQL 配置参数。
 
+**官网：<https://pg-optimizer.poiig.top/>** — 无需安装，打开即用。
+
 ## 📸 系统运行截图
 
 ### 主界面
@@ -19,13 +21,13 @@
 ## ✨ 功能特性
 
 - 🎯 **智能参数计算**: 根据服务器配置自动计算优化的 PostgreSQL 参数
-- 📊 **多版本支持**: 支持 PostgreSQL 13/14/15/16 版本
+- 📊 **多版本支持**: 覆盖 PostgreSQL 13–18，13 沿用生产基线公式，14–18 只补充官方新增或语义变化的参数
 - 💾 **存储类型优化**: 支持 SSD 和机械硬盘两种存储类型，自动调整 I/O 相关参数
-- 📋 **一键复制**: 支持复制配置文本
-- 🔍 **SQL 预览**: 生成并预览 ALTER SYSTEM SQL 语句，支持在弹窗中查看和复制
-- 📖 **参数说明**: 每个参数都有详细说明和官方文档链接
+- 🔬 **磁盘类型实测**: 附带 `detect_disk_type.sh`，用 fio 压测结果决定该选 SSD 还是 HDD
+- 📋 **一键复制**: 复制时弹窗展示 postgresql.conf 与 ALTER SYSTEM 全文，可核对后再粘贴
+- 🔍 **搜索与筛选**: 按参数名、取值、说明搜索，可按分类或"需重启"过滤
+- 📖 **参数说明**: 每个参数都有详细说明和对应版本的官方文档链接
 - 🔄 **重启提示**: 明确标识哪些参数需要重启服务才能生效
-- 🎨 **现代化 UI**: 响应式设计，支持分组显示和参数编辑
 
 ## 🛠️ 技术栈
 
@@ -129,15 +131,34 @@ npm run preview
 
 ## 📖 使用方法
 
-1. 选择 PostgreSQL 版本（当前支持 13）
+1. 选择 PostgreSQL 版本（13–18）
 2. 输入 CPU 核心数（例如：8）
 3. 输入内存大小（GB，例如：32）
-4. 选择存储类型（SSD 或机械硬盘）
-5. 点击"生成配置"按钮
-6. 查看生成的参数配置（可按分组查看）
-7. 可以编辑参数值（双击参数值进行编辑）
-8. 点击"复制配置"按钮复制配置文本
-9. 点击"生成并预览 ALTER SYSTEM SQL"按钮在弹窗中查看和复制 SQL 语句
+4. 选择存储类型（SSD 或机械硬盘），不确定时用下面的脚本实测
+5. 参数会随输入实时重算，也可以点"生成配置"手动触发
+6. 需要微调时直接在表格里改参数值，复制出来的内容会同步
+7. 点"复制 postgresql.conf"或"复制 ALTER SYSTEM"，内容进剪贴板同时弹窗展示全文
+
+## 🔬 磁盘类型实测
+
+云盘的规格页不一定反映真实性能，`effective_io_concurrency`、`random_page_cost` 又依赖存储类型，所以提供了一个压测脚本：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Poiig/pg-optimizer/main/detect_disk_type.sh -o detect_disk_type.sh
+bash detect_disk_type.sh -d /var/lib/postgresql/data
+```
+
+脚本跑 4KB 随机读，按 IOPS 和延迟分位数判定 HDD / SSD / NVMe，结论是 NVMe 或 SSD 就在页面里选 SSD。
+
+| 选项 | 说明 |
+| --- | --- |
+| `-d DIR` | 测试目录，指到 PGDATA 所在的盘才准（默认当前目录） |
+| `-s SIZE` | 测试文件大小，默认 `4G`，空间不够用 `-s 1G` |
+| `-t SEC` | 压测时长，默认 20 秒 |
+| `--no-install` | 不自动装依赖，只打印需要执行的安装命令 |
+| `-y` | 自动安装依赖时不再询问 |
+
+依赖方面：压测本身需要 `fio`；解析结果会在 `jq`、`python3`、`awk` 之间挑一个可用的，所以没装 `jq` 也能跑完。有 root 或免密 sudo 时脚本会询问是否自动安装，没有权限就用 `--no-install` 拿到手动安装命令。测试文件跑完自动删除，文件系统不支持 `O_DIRECT`（overlayfs、tmpfs）时会降级为带缓存读并在结论里标注。
 
 ## 🔢 参数算法说明
 
@@ -329,9 +350,9 @@ MIT License
 
 ## 🌐 在线演示
 
-项目已部署到 Cloudflare Pages，访问：[在线演示](https://your-project.pages.dev)
+官网（Cloudflare Pages 部署）：<https://pg-optimizer.poiig.top/>
 
-> 注意：请将 `your-project.pages.dev` 替换为你的实际部署地址
+纯前端计算，不上传任何服务器信息，也不需要连接数据库。
 
 ## 📞 联系方式
 
