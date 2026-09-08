@@ -8,15 +8,15 @@
 
 ### 主界面
 ![主界面](screenshots/main.png)
-*输入服务器配置信息（PostgreSQL版本、CPU核心数、内存大小、存储类型）*
+*左侧填写版本、CPU、内存和存储类型（SSD / NVMe / HDD），右侧即时给出推荐配置*
 
 ### 生成的配置参数
 ![配置参数](screenshots/params.png)
-*自动生成的优化参数，按类别分组显示，包含参数值、是否需要重启、参数描述等信息*
+*参数按类别筛选，表格含取值、是否需重启、版本徽章和说明，可直接改值*
 
 ### 功能演示
 ![功能演示](screenshots/features.png)
-*支持一键复制配置、生成并预览 ALTER SYSTEM SQL 等功能*
+*点 postgresql.conf 或 ALTER SYSTEM 会弹窗展示全文，核对后再复制*
 
 ## ✨ 功能特性
 
