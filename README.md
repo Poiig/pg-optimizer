@@ -321,10 +321,15 @@ autovacuum_work_mem = GREATEST(DBInstanceClassMemory / 65536, 131072)
 
 ## 🔄 参数重启要求
 
-工具会明确标识哪些参数需要重启 PostgreSQL 服务才能生效：
+表格「重启」列按官方 GUC context 标注：只有 `postmaster`（文档写 *can only be set at server start*）才标「是」。
 
-- **需要重启的参数**: shared_buffers、max_connections、max_worker_processes、wal_level、shared_preload_libraries、jit 等
-- **可通过 pg_reload_conf() 生效的参数**: 大部分参数都可以通过 `SELECT pg_reload_conf();` 生效，无需重启
+本工具会输出且需要重启的参数：
+
+- **全版本**：`shared_buffers`、`wal_buffers`、`max_connections`、`huge_pages`、`max_worker_processes`、`logging_collector`、`autovacuum_freeze_max_age`、`autovacuum_multixact_freeze_max_age`
+- **PG13–17**：`autovacuum_max_workers`
+- **PG18**：改为 `autovacuum_worker_slots` 需重启；`autovacuum_max_workers` 只要槽位够，`pg_reload_conf()` 即可
+
+其余推荐项（含 `jit`、并行度、autovacuum 阈值/配额、checkpoint、日志级别）都是 SIGHUP 或会话级，reload 或 `SET` 即可，不必重启。
 
 ## 📚 参数说明
 
