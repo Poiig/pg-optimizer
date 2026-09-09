@@ -14,6 +14,16 @@ const CHANGELOG = {
         name: 'maintenance_io_concurrency',
         zh: 'VACUUM、建索引等维护路径的预读并发。默认 10，比查询路径的 effective_io_concurrency 高。',
         en: 'Prefetch concurrency for VACUUM and index builds. Default 10, higher than query-path effective_io_concurrency.'
+      },
+      {
+        name: 'log_min_duration_sample',
+        zh: '达到该耗时的语句进入采样池；是否落盘由 log_statement_sample_rate 决定。慢于 log_min_duration_statement 的仍必定记录。',
+        en: 'Statements at least this long enter the sample pool; log_statement_sample_rate decides which are logged. Still always logs those over log_min_duration_statement.'
+      },
+      {
+        name: 'log_statement_sample_rate',
+        zh: '超过 log_min_duration_sample 的语句被记录的比例（0–1）。',
+        en: 'Fraction of statements exceeding log_min_duration_sample that are logged (0–1).'
       }
     ],
     removed: [],

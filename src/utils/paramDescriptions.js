@@ -102,8 +102,8 @@ export const paramDescriptions = {
 	'log_timezone': '日志时区。设置日志中时间戳的时区。',
 	'log_min_duration_statement': '记录慢查询的最小执行时间。超过此时间的语句会被记录到日志。',
 	'log_temp_files': '临时文件删除时，大小达到该阈值才记日志。0 记全部，-1 关闭。阈值偏大只抓严重溢写，偏小能更早发现 work_mem 不够。',
-	'log_min_duration_sample': '采样记录的最小执行时间。超过此时间的语句会被采样记录。',
-	'log_statement_sample_rate': '语句采样率。控制被采样记录的语句比例（0.0-1.0）。',
+	'log_min_duration_sample': '采样慢语句的最低耗时（PG13 起）。达到该时间的语句按 log_statement_sample_rate 抽样记录；已超过 log_min_duration_statement 的仍全量记录。',
+	'log_statement_sample_rate': '对达到 log_min_duration_sample 的语句的记录比例（0–1，PG13 起）。',
 
 	'track_wal_io_timing': '是否统计 WAL I/O 耗时。PG14 引入，便于和 track_io_timing 一起看检查点写入。',
 	'compute_query_id': '是否计算 query id。auto 会在加载 pg_stat_statements 时自动打开，避免扩展无 id 可用。',
@@ -220,8 +220,8 @@ export const paramDescriptionsEn = {
 	'log_timezone': 'Sets the time zone to use when writing log timestamps. Sets the time zone for timestamps in logs.',
 	'log_min_duration_statement': 'Causes the duration of each completed statement to be logged if the statement ran for at least the specified number of milliseconds. Statements exceeding this time will be logged.',
 	'log_temp_files': 'Log temporary files when they are deleted if they are at least this large. 0 logs all, -1 disables. A high threshold only catches severe spills; a lower one surfaces work_mem pressure earlier.',
-	'log_min_duration_sample': 'Minimum execution time above which a sample of statements will be logged. Statements exceeding this time will be sampled and logged.',
-	'log_statement_sample_rate': 'Fraction of statements exceeding log_min_duration_sample to be logged. Controls the proportion of statements that are sampled and logged (0.0-1.0).',
+	'log_min_duration_sample': 'Minimum duration for sampled statement logging (since PG13). Statements this long may be logged per log_statement_sample_rate; those over log_min_duration_statement are always logged.',
+	'log_statement_sample_rate': 'Fraction (0–1) of statements exceeding log_min_duration_sample to log (since PG13).',
 
 	'hash_mem_multiplier': 'Hash table memory is work_mem times this value. Recommended 2.0 so hash nodes spill less.',
 	'maintenance_io_concurrency': 'Prefetch concurrency for VACUUM and index builds. 2 on a single HDD; RAID uses the data-disk count; 64 on SATA/SAS SSD and local NVMe.',

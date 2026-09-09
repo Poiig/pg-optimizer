@@ -22,8 +22,8 @@
 
 - 🎯 **智能参数计算**: 根据服务器配置自动计算优化的 PostgreSQL 参数
 - 📊 **多版本支持**: 覆盖 PostgreSQL 13–18，13 沿用生产基线公式，14–18 只补充官方新增或语义变化的参数
-- 💾 **存储类型优化**: 支持 SSD 和机械硬盘两种存储类型，自动调整 I/O 相关参数
-- 🔬 **磁盘类型实测**: 附带 `detect_disk_type.sh`，用 fio 压测结果决定该选 SSD 还是 HDD
+- 💾 **存储类型优化**: 支持 HDD / SATA·SAS SSD / 本地 NVMe，并按介质调整 I/O 相关参数
+- 🔬 **磁盘类型实测**: 附带 `detect_disk_type.sh`，用 fio 压测结果决定该选哪一档
 - 📋 **一键复制**: 复制时弹窗展示 postgresql.conf 与 ALTER SYSTEM 全文，可核对后再粘贴
 - 🔍 **搜索与筛选**: 按参数名、取值、说明搜索，可按分类或"需重启"过滤
 - 📖 **参数说明**: 每个参数都有详细说明和对应版本的官方文档链接
@@ -134,10 +134,10 @@ npm run preview
 1. 选择 PostgreSQL 版本（13–18）
 2. 输入 CPU 核心数（例如：8）
 3. 输入内存大小（GB，例如：32）
-4. 选择存储类型（SSD 或机械硬盘），不确定时用下面的脚本实测
+4. 选择存储类型（HDD / SATA·SAS SSD / 本地 NVMe），不确定时用下面的脚本实测
 5. 参数会随输入实时重算，也可以点"生成配置"手动触发
 6. 需要微调时直接在表格里改参数值，复制出来的内容会同步
-7. 点"复制 postgresql.conf"或"复制 ALTER SYSTEM"，内容进剪贴板同时弹窗展示全文
+7. 点 postgresql.conf 或 ALTER SYSTEM，弹窗展示全文后再复制
 
 ## 🔬 磁盘类型实测
 
@@ -162,153 +162,126 @@ bash detect_disk_type.sh -d /var/lib/postgresql/data
 
 ## 🔢 参数算法说明
 
-工具根据以下算法自动计算 PostgreSQL 性能参数。所有内存相关的计算都基于用户输入的内存大小（GB）转换为字节进行计算。
+工具根据以下算法自动计算 PostgreSQL 性能参数。内存相关计算均以用户输入的内存（GB）换算为字节后进行。
 
 ### 基础计算
 
-- **DBInstanceClassMemory** = 内存(GB) × 1024 × 1024 × 1024（转换为字节）
-- **memoryMB** = 内存(GB) × 1024（转换为MB）
+- **DBInstanceClassMemory** = 内存(GB) × 1024³（字节）
 
 ### 核心性能参数
 
-#### 1. max_connections（最大连接数）
+#### 1. max_connections
 ```
 max_connections = CPU核心数 × 200
 ```
-**说明**: 根据 CPU 核心数动态调整，确保有足够的连接数支持并发访问。
+按核数给出上限，可酌情减少；多余并发宜放在连接池。
 
-#### 2. shared_buffers（共享缓冲区）
+#### 2. shared_buffers
 ```
 shared_buffers = DBInstanceClassMemory / 4
 ```
-**说明**: 设置为内存的 1/4，这是 PostgreSQL 最重要的性能参数之一，用于缓存数据页。
+内存的 1/4，用于缓存数据页。
 
-#### 3. effective_cache_size（有效缓存大小）
+#### 3. effective_cache_size
 ```
 effective_cache_size = DBInstanceClassMemory × 3 / 4
 ```
-**说明**: 设置为总内存的 3/4，用于查询规划器估算可用缓存，影响查询计划选择。例如 32GB 内存计算结果为 24GB。
+规划器估算可用 OS 缓存；32GB 内存时为 24GB。
 
-#### 4. work_mem（工作内存）
+#### 4. work_mem
 ```
-work_mem = GREATEST(DBInstanceClassMemory / 4194304, 4096)
-结果单位: KB
+work_mem = GREATEST(DBInstanceClassMemory / 4194304, 4096)   # KB
 ```
-**说明**: 每个查询操作（排序、哈希、合并连接等）使用的内存大小。例如 32GB 内存计算结果为 8192KB。
+单操作排序/哈希内存；32GB 时为 8MB。
 
-#### 5. maintenance_work_mem（维护工作内存）
+#### 5. hash_mem_multiplier
 ```
-maintenance_work_mem = LEAST(DBInstanceClassMemory / 65536, 4194304)
-结果单位: KB
+hash_mem_multiplier = 2.0
 ```
-**说明**: 维护操作（如 VACUUM、CREATE INDEX）使用的内存。例如 32GB 内存计算结果为 524288KB。
+哈希表可用 `work_mem × 2`（全版本推荐；官方默认到 PG15 才改为 2.0）。
 
-#### 6. wal_buffers（WAL 缓冲区）
+#### 6. maintenance_work_mem
 ```
-wal_buffers = min(2047MB, shared_buffers / 32)
+maintenance_work_mem = LEAST(DBInstanceClassMemory / 65536, 4194304)   # KB
 ```
-**说明**: WAL 缓冲区大小，用于缓存 WAL 数据。例如 shared_buffers 是 16GB，则 wal_buffers = min(2047MB, 512MB) = 512MB。
+VACUUM / CREATE INDEX 等；32GB 时为 512MB，上限 4GB。
 
-#### 7. min_wal_size（最小 WAL 大小）
+#### 7. wal_buffers
 ```
-min_wal_size = LEAST(GREATEST(DBInstanceClassMemory / 8388608, 256), 8192)
-结果单位: MB
+wal_buffers = min(shared_buffers / 32, 16MB)
 ```
-**说明**: WAL 文件不会缩小到此值以下。例如 32GB 内存计算结果为 4096MB。
+官方自动值约为 `shared_buffers/32`，超过一个 WAL 段（通常 16MB）几乎无收益，故封顶 16MB。
 
-#### 8. max_wal_size（最大 WAL 大小）
+#### 8. min_wal_size / max_wal_size
 ```
-max_wal_size = LEAST(GREATEST(DBInstanceClassMemory / 2097152, 2048), 16384)
-结果单位: MB
+min_wal_size = LEAST(GREATEST(DBInstanceClassMemory / 8388608, 256), 8192)   # MB
+max_wal_size = LEAST(GREATEST(DBInstanceClassMemory / 2097152, 2048), 16384) # MB
 ```
-**说明**: 当 WAL 大小超过此值时，会强制触发检查点。例如 32GB 内存计算结果为 16384MB。
+随内存放大，分别上限 8GB / 16GB。
 
-#### 9. temp_file_limit（临时文件限制）
+#### 9. temp_file_limit
 ```
-temp_file_limit = DBInstanceClassMemory / 1024
-结果单位: KB
+temp_file_limit = DBInstanceClassMemory / 1024   # KB（即等于物理内存）
 ```
-**说明**: 限制单个会话可以使用的临时文件大小。例如 32GB 内存计算结果为 33554432KB。
+单会话临时文件上限。
 
-### 并行处理参数
+### 并行处理参数（仅 CPU ≥ 4 核时输出）
 
-#### 10. max_worker_processes（最大工作进程数）
 ```
-max_worker_processes = CPU核心数 × 2
+max_worker_processes              = CPU × 2
+max_parallel_workers_per_gather   = PG13: max(CPU/2, 2)；PG14+: 2
+max_parallel_workers              = max(CPU×3/4, 8)；PG14+ 不超过 max_worker_processes
+max_parallel_maintenance_workers  = max(CPU/2, 2)
 ```
-**说明**: 限制后台工作进程的总数。
-
-#### 11. max_parallel_workers_per_gather（每个 Gather 节点的最大并行工作进程数）
-```
-max_parallel_workers_per_gather = GREATEST(CPU核心数 / 2, 2)
-```
-**说明**: 控制单个查询的并行度。
-
-#### 12. max_parallel_workers（最大并行工作进程数）
-```
-max_parallel_workers = GREATEST(CPU核心数 × 3 / 4, 8)
-```
-**说明**: 限制所有并行查询的总工作进程数。
-
-#### 13. max_parallel_maintenance_workers（最大并行维护工作进程数）
-```
-max_parallel_maintenance_workers = GREATEST(CPU核心数 / 2, 2)
-```
-**说明**: 用于 CREATE INDEX、VACUUM 等维护操作的并行执行。
+4 核以下交给官方默认，避免小机并行过猛。
 
 ### 自动清理参数
 
-#### 14. autovacuum_max_workers（最大自动清理工作进程数）
 ```
-autovacuum_max_workers = LEAST(GREATEST(DBInstanceClassMemory / 17179869184, 3), 10)
+autovacuum_vacuum_scale_factor / analyze_scale_factor = 0.05
+autovacuum_naptime                                  = 15s
+autovacuum_vacuum_cost_delay                        = 2ms
+autovacuum_vacuum_cost_limit                        = max_workers × 200
+vacuum_freeze_table_age / multixact_freeze_table_age = 150000000
 ```
-**说明**: 17179869184 = 16GB，根据内存大小动态调整，范围在 3-10 之间。
 
-#### 15. autovacuum_work_mem（自动清理工作内存）
+workers：
 ```
-autovacuum_work_mem = GREATEST(DBInstanceClassMemory / 65536, 131072)
-结果单位: KB
+# 内存档：每满 16GB 计 1
+workersByMemory = floor(DBInstanceClassMemory / 16GB)
+# PG13：只按内存，下限 3、上限 10
+# PG14+：再与 CPU/2 取大，下限 3、上限 10
+autovacuum_vacuum_cost_limit 随 workers 放大，满员时每人约等于官方默认 200
 ```
-**说明**: 每个自动清理工作进程使用的内存大小，用于存储死元组 ID，最大有效值为 1GB。
 
-### I/O 相关参数（根据存储类型）
+```
+autovacuum_work_mem = min(max(DBInstanceClassMemory/65536, 131072), 1048576)  # KB，帽 1GB
+```
+PG18 另给 `autovacuum_worker_slots`（≥16）与 `autovacuum_vacuum_max_threshold=50000000`。
 
-#### 16. random_page_cost（随机页面读取成本）
-- **SSD**: `1.1`
-- **HDD**: `4.0`
+### I/O 相关参数（按存储类型）
 
-**说明**: 用于查询规划器估算随机 I/O 的成本。SSD 的随机读取性能接近顺序读取，因此成本较低。
+| 存储 | random_page_cost | effective_io_concurrency | maintenance_io_concurrency |
+| --- | --- | --- | --- |
+| HDD 单盘 | 4 | 2 | 2 |
+| HDD RAID | 4 | 数据盘块数 | 数据盘块数 |
+| SATA/SAS SSD | 1.1 | 128 | 64 |
+| 本地 NVMe | 1.1 | 200 | 64 |
 
-#### 17. effective_io_concurrency（有效并发 I/O 操作数）
-- **默认值**: `1`（所有环境统一使用此默认值）
+不确定盘型时可用仓库内 `detect_disk_type.sh` 实测。
 
-**说明**: 用于查询规划器估算并发 I/O 能力。
+### 其他常用固定/版本相关值
 
-**<span style="color: red; font-weight: bold;">建议值说明：</span>**
-- **<span style="color: red; font-weight: bold;">虚拟机环境：</span>** 使用默认值 `1`
-- **<span style="color: red; font-weight: bold;">物理磁盘 SSD：</span>** 建议设置为 `200`
-- **<span style="color: red; font-weight: bold;">物理磁盘 HDD：</span>** 建议设置为 `4`
-
-### 其他固定参数
-
-- **checkpoint_timeout**: `15min` - 检查点超时时间
-- **checkpoint_completion_target**: `0.9` - 检查点完成目标
-- **bgwriter_lru_multiplier**: `2` - 后台写入器的 LRU 乘数
-- **wal_compression**: `on` - 启用 WAL 压缩
-- **jit**: `off` - 关闭 JIT 编译（可根据需要调整）
+- **checkpoint_timeout** `15min`，**checkpoint_completion_target** `0.9`
+- **bgwriter_lru_maxpages** `1000`，**bgwriter_lru_multiplier** `2`
+- **wal_compression**：PG13/14 为 `on`（pglz）；PG15+ 为 `lz4`
+- **jit** `off`（短 OLTP 查询通常更合适）
+- **log_min_duration_statement** `5000ms`；**log_temp_files** `10MB`
+- **log_min_duration_sample** `500ms` + **log_statement_sample_rate** `0.2`（PG13 起官方就有，低于慢查询阈值的语句按比例采样）
 
 ### 智能单位选择
 
-工具会自动选择最合适的单位（GB、MB、KB）来显示内存相关的参数值：
-- 如果能表示为整数 GB，则使用 GB
-- 如果能表示为整数 MB，则使用 MB
-- 否则使用 KB
-
-例如：
-- `shared_buffers`: 8GB（8GB 内存时）
-- `wal_buffers`: 512MB（32GB 内存时）
-- `work_mem`: 8192KB（32GB 内存时）
-
+内存类参数优先显示为整数 GB / MB，否则用 kB。例如 32GB 规格下：`shared_buffers=8GB`，`wal_buffers=16MB`，`work_mem=8MB`。
 ## 📝 参数分组
 
 生成的参数按以下类别分组：
