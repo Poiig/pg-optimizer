@@ -148,7 +148,7 @@ curl -fsSL https://raw.githubusercontent.com/Poiig/pg-optimizer/main/detect_disk
 bash detect_disk_type.sh -d /var/lib/postgresql/data
 ```
 
-脚本跑 4KB 随机读，按 IOPS 和延迟分位数判定 HDD / SSD / NVMe，结论是 NVMe 或 SSD 就在页面里选 SSD。
+脚本跑 4KB 随机读，按 IOPS 和延迟分位数判定 HDD / SSD / NVMe，再在页面里选对应项。
 
 | 选项 | 说明 |
 | --- | --- |
