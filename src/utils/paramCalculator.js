@@ -164,9 +164,10 @@ export function calculateParams(config) {
 	addParam('vacuum_cost_page_miss', '2', autovacuumCategory)
 	addParam('vacuum_defer_cleanup_age', '0', autovacuumCategory, { until: 15 })
 	addParam('vacuum_freeze_min_age', '50000000', autovacuumCategory)
-	addParam('vacuum_freeze_table_age', '200000000', autovacuumCategory)
+	// 跟官方默认 1.5 亿对齐；设到 2 亿会被钳到 freeze_max_age 的 95%，没有额外收益。
+	addParam('vacuum_freeze_table_age', '150000000', autovacuumCategory)
 	addParam('vacuum_multixact_freeze_min_age', '5000000', autovacuumCategory)
-	addParam('vacuum_multixact_freeze_table_age', '200000000', autovacuumCategory)
+	addParam('vacuum_multixact_freeze_table_age', '150000000', autovacuumCategory)
 	// PG16 默认 256kB 偏小，跟 PG17 官方默认对齐到 2MB，限制 vacuum 挤占缓存。
 	addParam('vacuum_buffer_usage_limit', '2MB', autovacuumCategory, { since: 16 })
 	// 比例因子 0.05 在亿行级的租户表上要攒到 500 万死元组才触发，18 起用新参数给它封顶。
@@ -273,7 +274,8 @@ export function calculateParams(config) {
 	addParam('log_line_prefix', '%m [%p][%a] %u %d %r ', loggingCategory)
 	addParam('log_timezone', 'Asia/Shanghai', loggingCategory)
 	addParam('log_min_duration_statement', '5000ms', loggingCategory)
-	addParam('log_temp_files', '131072', loggingCategory)
+	// 裸数字按官方默认单位 kB 解析，写成 MB 避免和「字节」搞混；10MB 能较早暴露 work_mem 溢写。
+	addParam('log_temp_files', '10MB', loggingCategory)
 	addParam('log_min_duration_sample', '500ms', loggingCategory)
 	addParam('log_statement_sample_rate', '0.2', loggingCategory)
 	addParam('lc_messages', 'en_US.UTF-8', loggingCategory)

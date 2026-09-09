@@ -28,7 +28,7 @@ export const paramDescriptions = {
 	'vacuum_freeze_min_age': '事务ID冻结的最小年龄。控制何时冻结事务ID。',
 	'vacuum_freeze_table_age': '触发全表冻结扫描的年龄阈值，官方默认 1.5 亿。VACUUM 会静默把生效值压到 autovacuum_freeze_max_age 的 95%，设得比它高不会有额外效果。',
 	'vacuum_multixact_freeze_min_age': '多事务ID冻结的最小年龄。控制何时冻结多事务ID。',
-	'vacuum_multixact_freeze_table_age': '多事务表冻结的年龄阈值。当表的多事务ID年龄超过此值时，会触发VACUUM进行冻结。',
+	'vacuum_multixact_freeze_table_age': '触发全表 multixact 冻结扫描的年龄阈值，官方默认 1.5 亿，同样会被钳到 multixact_freeze_max_age 的 95%。',
 
 	// WAL 相关参数
 	'wal_sender_timeout': 'WAL发送超时时间。WAL发送进程等待接收确认的超时时间。',
@@ -101,7 +101,7 @@ export const paramDescriptions = {
 	'log_line_prefix': '日志行前缀格式。设置每行日志的前缀格式，支持多种占位符。',
 	'log_timezone': '日志时区。设置日志中时间戳的时区。',
 	'log_min_duration_statement': '记录慢查询的最小执行时间。超过此时间的语句会被记录到日志。',
-	'log_temp_files': '记录临时文件的最小大小。当临时文件超过此大小时会被记录。',
+	'log_temp_files': '临时文件删除时，大小达到该阈值才记日志。0 记全部，-1 关闭。阈值偏大只抓严重溢写，偏小能更早发现 work_mem 不够。',
 	'log_min_duration_sample': '采样记录的最小执行时间。超过此时间的语句会被采样记录。',
 	'log_statement_sample_rate': '语句采样率。控制被采样记录的语句比例（0.0-1.0）。',
 
@@ -148,7 +148,7 @@ export const paramDescriptionsEn = {
 	'vacuum_freeze_min_age': 'Minimum age at which VACUUM should freeze a table row. Controls when transaction IDs are frozen.',
 	'vacuum_freeze_table_age': 'Age at which VACUUM performs an aggressive whole-table scan to freeze tuples; the default is 150 million. VACUUM silently clamps the effective value to 95% of autovacuum_freeze_max_age, so setting it higher has no extra effect.',
 	'vacuum_multixact_freeze_min_age': 'Minimum age at which VACUUM should freeze a table row\'s multixact ID. Controls when multixact IDs are frozen.',
-	'vacuum_multixact_freeze_table_age': 'Age at which VACUUM should scan the whole table to freeze multixact IDs.',
+	'vacuum_multixact_freeze_table_age': 'Age at which VACUUM aggressively freezes multixact IDs; the default is 150 million, clamped to 95% of autovacuum_multixact_freeze_max_age.',
 
 	// WAL related parameters
 	'wal_sender_timeout': 'Maximum time to wait for WAL replication. Timeout for WAL sender process waiting for receiver acknowledgment.',
@@ -219,7 +219,7 @@ export const paramDescriptionsEn = {
 	'log_line_prefix': 'Controls what information is written to the server log for each log message. Sets the prefix format for each log line, supports multiple placeholders.',
 	'log_timezone': 'Sets the time zone to use when writing log timestamps. Sets the time zone for timestamps in logs.',
 	'log_min_duration_statement': 'Causes the duration of each completed statement to be logged if the statement ran for at least the specified number of milliseconds. Statements exceeding this time will be logged.',
-	'log_temp_files': 'Causes temporary file names and sizes to be logged when a temporary file is deleted. Temporary files exceeding this size will be logged.',
+	'log_temp_files': 'Log temporary files when they are deleted if they are at least this large. 0 logs all, -1 disables. A high threshold only catches severe spills; a lower one surfaces work_mem pressure earlier.',
 	'log_min_duration_sample': 'Minimum execution time above which a sample of statements will be logged. Statements exceeding this time will be sampled and logged.',
 	'log_statement_sample_rate': 'Fraction of statements exceeding log_min_duration_sample to be logged. Controls the proportion of statements that are sampled and logged (0.0-1.0).',
 
